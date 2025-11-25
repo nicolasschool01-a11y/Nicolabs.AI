@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import ImageUploader from './components/ImageUploader';
 import ResultDisplay from './components/ResultDisplay';
 import LoginPage from './components/LoginPage';
-import { WandIcon, SparklesIcon, LogoIcon } from './components/Icons';
+import { WandIcon, SparklesIcon, LogoIcon, ArrowLeftIcon, PinterestIcon, UploadIcon, XIcon } from './components/Icons';
 import { editImageWithGemini, fileToBase64, addWatermark } from './services/geminiService';
 import { ProcessingState, UploadedImage, StyleOptions, GeneratedImage } from './types';
 
@@ -120,7 +121,11 @@ const PROMPT_TEMPLATES: Record<string, string[]> = {
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isGuest, setIsGuest] = useState(false);
+  
+  // State for images
   const [images, setImages] = useState<UploadedImage[]>([]);
+  const [styleReference, setStyleReference] = useState<UploadedImage | null>(null);
+  
   const [prompt, setPrompt] = useState('');
   
   // State for IDs to match the new structure
@@ -143,6 +148,7 @@ const App: React.FC = () => {
   });
 
   const loadingIntervalRef = useRef<number | null>(null);
+  const styleInputRef = useRef<HTMLInputElement>(null);
 
   // --- HANDLERS ---
 
@@ -155,6 +161,7 @@ const App: React.FC = () => {
     setIsAuthenticated(false);
     setIsGuest(false);
     setImages([]);
+    setStyleReference(null);
     setPrompt('');
     setHistory([]);
     setCurrentImage(null);
@@ -173,6 +180,17 @@ const App: React.FC = () => {
     setImages(prev => prev.filter(img => img.id !== id));
   };
 
+  const handleStyleRefAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      setStyleReference({
+        id: 999,
+        file,
+        previewUrl: URL.createObjectURL(file)
+      });
+    }
+  };
+
   const selectBusiness = (id: string, value: string) => {
     setSelectedBusinessId(id === selectedBusinessId ? '' : id);
     setSelectedStyles(prev => ({ ...prev, business: id === selectedBusinessId ? '' : value }));
@@ -184,6 +202,10 @@ const App: React.FC = () => {
 
   const applyTemplate = (templateText: string) => {
     setPrompt(templateText);
+  };
+
+  const openPinterest = () => {
+    window.open('https://www.pinterest.com/search/pins/?q=professional%20product%20photography%20ideas', '_blank');
   };
 
   const startLoadingMessages = () => {
@@ -214,22 +236,35 @@ const App: React.FC = () => {
         mimeType: img.file.type
       })));
 
+      let styleRefPayload = undefined;
+      if (styleReference) {
+        styleRefPayload = {
+          base64: await fileToBase64(styleReference.file),
+          mimeType: styleReference.file.type
+        };
+      }
+
       // --- ADVANCED PROMPT ENGINEERING PRO STUDIO ---
       let finalPrompt = "";
       
       // Role & Goal
       finalPrompt += `Actúa como un fotógrafo de clase mundial y director de arte experto. `;
-      finalPrompt += `Tu objetivo es crear una imagen comercial galardonada integrando los productos de referencia de manera fotorrealista. `;
+      finalPrompt += `Tu objetivo es crear una imagen comercial galardonada. `;
       
-      // Reference Handling
+      // Reference Handling (Subject)
       if (images.length > 0) {
         const imageRefs = images.map(img => `[Imagen ${img.id}]`).join(', ');
-        finalPrompt += `REFERENCIAS: Utiliza ${imageRefs} como el producto principal. `;
-        finalPrompt += `CRÍTICO: Debes mantener la forma, logotipos y detalles del producto EXACTAMENTE como en la referencia. `;
+        finalPrompt += `SUJETO PRINCIPAL: Utiliza ${imageRefs} como los productos o sujetos protagonistas. `;
+        finalPrompt += `CRÍTICO: Debes mantener la identidad, logotipos, formas y detalles del sujeto principal EXACTAMENTE como en las referencias. `;
+      }
+
+      // Reference Handling (Style)
+      if (styleReference) {
+        finalPrompt += `\nREFERENCIA DE ESTILO: Utiliza la imagen de referencia de estilo proporcionada SOLAMENTE como guía para la iluminación, la composición, el ángulo y la atmósfera (mood). NO copies el objeto de esta imagen, solo su estética. `;
       }
 
       // Context & Style
-      if (selectedStyles.business) finalPrompt += `\nCONTEXTO: ${selectedStyles.business}`;
+      if (selectedStyles.business) finalPrompt += `\nCONTEXTO DE NEGOCIO: ${selectedStyles.business}`;
       
       // User Instruction
       finalPrompt += `\n\nESCENA DESEADA: "${prompt}"`;
@@ -249,11 +284,11 @@ const App: React.FC = () => {
       finalPrompt += `\n\nCALIDAD DE SALIDA:\n`;
       finalPrompt += `- Resolución 8K, texturas hiperrealistas.\n`;
       finalPrompt += `- Color grading cinematográfico profesional.\n`;
-      finalPrompt += `- Sin distorsiones en el producto, sin texto alucinatorio.\n`;
+      finalPrompt += `- Integración perfecta de luces y sombras.\n`;
 
       console.log("Generando con prompt:", finalPrompt);
 
-      let resultUrl = await editImageWithGemini(imagesPayload, finalPrompt);
+      let resultUrl = await editImageWithGemini(imagesPayload, finalPrompt, styleRefPayload);
       
       // Apply Watermark if Guest
       if (isGuest) {
@@ -299,6 +334,11 @@ const App: React.FC = () => {
       <header className="border-b border-slate-800 bg-[#0F172A]/80 backdrop-blur-xl sticky top-0 z-50 shadow-2xl">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-3">
+            {isGuest && (
+              <button onClick={handleLogout} className="mr-2 text-slate-400 hover:text-white transition-colors">
+                <ArrowLeftIcon className="w-5 h-5" />
+              </button>
+            )}
             <div className="bg-gradient-to-br from-yellow-400 to-orange-600 p-2 rounded-lg shadow-lg shadow-orange-500/20">
               <LogoIcon className="w-5 h-5 text-white" />
             </div>
@@ -306,50 +346,68 @@ const App: React.FC = () => {
               <h1 className="text-xl font-bold tracking-tight text-white leading-none">
                 Nicrolabs<span className="text-yellow-400">.AI</span>
               </h1>
-              <span className="text-[10px] text-slate-400 tracking-wider font-medium uppercase block -mt-0.5">Estudio Pro</span>
+              <span className="text-[10px] text-slate-400 tracking-wider font-medium uppercase block -mt-0.5">Studio v2.5</span>
             </div>
           </div>
           <div className="flex items-center space-x-4">
             <div className="hidden md:flex items-center space-x-2 text-xs font-medium text-slate-500 bg-slate-900/50 px-3 py-1.5 rounded-full border border-slate-800">
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-              <span>Gemini 2.5 Flash Activo</span>
+              <span>Gemini 2.5 Flash</span>
             </div>
-            {isGuest && (
+            {isGuest ? (
               <button onClick={handleLogout} className="px-3 py-1 bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 rounded-full text-xs font-semibold hover:bg-yellow-500 hover:text-black transition-all">
                 Registrarse (Quitar Marca)
               </button>
+            ) : (
+               <button onClick={handleLogout} className="text-xs text-slate-400 hover:text-white transition-colors">
+                Cerrar Sesión
+              </button>
             )}
-            <button onClick={handleLogout} className="text-xs text-slate-400 hover:text-white transition-colors">
-              Salir
-            </button>
           </div>
         </div>
       </header>
 
       {isGuest && (
-        <div className="bg-yellow-500/10 border-b border-yellow-500/20 text-center py-2 px-4">
+        <div className="bg-yellow-500/10 border-b border-yellow-500/20 text-center py-2 px-4 animate-in slide-in-from-top duration-500">
           <p className="text-xs font-medium text-yellow-300">
-            🔒 Estás en Modo Demo (Invitado). Tus imágenes tendrán una marca de agua. 
-            <button onClick={handleLogout} className="underline ml-1 font-bold hover:text-white">Inicia Sesión</button> para acceso completo.
+            🔒 <strong>Modo Demo:</strong> Tus imágenes tendrán marca de agua. 
+            <button onClick={handleLogout} className="underline ml-1 font-bold hover:text-white">Crea una cuenta gratis</button> para resultados profesionales limpios.
           </p>
         </div>
       )}
 
       <main className="max-w-7xl mx-auto px-4 py-8">
         
+        {/* Onboarding Intro */}
+        <div className="mb-8 p-6 bg-slate-800/30 rounded-2xl border border-slate-700/50 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+           <div>
+             <h2 className="text-lg font-bold text-white mb-1">Crea fotos de producto que vendan</h2>
+             <p className="text-sm text-slate-400">
+               1. Sube tu producto. 2. Elige el estilo. 3. La IA integra todo en un escenario fotorrealista.
+             </p>
+           </div>
+           <button 
+             onClick={openPinterest}
+             className="flex items-center space-x-2 px-4 py-2 bg-[#E60023] hover:bg-[#ad081b] text-white rounded-full text-xs font-bold shadow-lg transition-transform hover:scale-105"
+           >
+             <PinterestIcon className="w-4 h-4" />
+             <span>Buscar Ideas en Pinterest</span>
+           </button>
+        </div>
+        
         <div className="grid lg:grid-cols-12 gap-8 items-start">
           
           {/* --- LEFT COLUMN: CONTROLS (7/12) --- */}
           <div className="lg:col-span-7 space-y-8">
             
-            {/* 1. UPLOADER */}
+            {/* 1. PRODUCT UPLOADER */}
             <section className="space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
                   <span className="bg-yellow-500 text-black w-5 h-5 rounded flex items-center justify-center text-xs">1</span>
                   Sube tus Productos
                 </h3>
-                <span className="text-xs text-slate-500">Máx 3 imágenes de referencia</span>
+                <span className="text-xs text-slate-500">El protagonista (Máx 3)</span>
               </div>
               <ImageUploader 
                 images={images}
@@ -358,16 +416,63 @@ const App: React.FC = () => {
               />
             </section>
 
-            {/* 2. STYLE SELECTOR */}
+             {/* 2. STYLE REFERENCE (NEW) */}
+             <section className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                  <span className="bg-yellow-500 text-black w-5 h-5 rounded flex items-center justify-center text-xs">2</span>
+                  Referencias de Estilo (Moodboard)
+                </h3>
+                <span className="text-xs text-slate-500">Opcional</span>
+              </div>
+              
+              <div className="p-4 bg-slate-900/50 rounded-xl border border-slate-800">
+                <p className="text-xs text-slate-400 mb-3">
+                  ¿Tienes una foto que te inspira? Súbela aquí y la IA copiará la iluminación y el ángulo, pero usando TU producto.
+                </p>
+                <input 
+                  type="file" 
+                  ref={styleInputRef} 
+                  onChange={handleStyleRefAdd} 
+                  accept="image/*" 
+                  className="hidden" 
+                />
+                
+                {styleReference ? (
+                  <div className="relative w-full aspect-[21/9] rounded-lg overflow-hidden border border-slate-600 group">
+                    <img src={styleReference.previewUrl} alt="Style Ref" className="w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity" />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                       <span className="bg-black/50 px-3 py-1 rounded-full text-xs font-bold text-white backdrop-blur-sm">Referencia Activa</span>
+                    </div>
+                    <button 
+                      onClick={() => setStyleReference(null)}
+                      className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                    >
+                      <XIcon className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <button 
+                    onClick={() => styleInputRef.current?.click()}
+                    className="w-full py-4 border-2 border-dashed border-slate-700 hover:border-slate-500 rounded-lg text-slate-400 hover:text-white transition-all flex flex-col items-center justify-center gap-2"
+                  >
+                    <UploadIcon className="w-5 h-5" />
+                    <span className="text-xs font-medium">Cargar foto de inspiración (Ej: Pinterest)</span>
+                  </button>
+                )}
+              </div>
+            </section>
+
+            {/* 3. STYLE SELECTOR */}
             <section className="space-y-6 bg-slate-900/50 p-6 rounded-2xl border border-slate-800">
               <div className="flex items-center gap-2 mb-2">
-                <span className="bg-yellow-500 text-black w-5 h-5 rounded flex items-center justify-center text-xs font-bold">2</span>
+                <span className="bg-yellow-500 text-black w-5 h-5 rounded flex items-center justify-center text-xs font-bold">3</span>
                 <h3 className="text-sm font-bold text-white uppercase tracking-wider">Configuración del Estudio</h3>
               </div>
               
               {/* Business Type Grid */}
               <div className="space-y-3">
-                <label className="text-xs font-semibold text-slate-400 ml-1">Contexto del Negocio (Selección Única)</label>
+                <label className="text-xs font-semibold text-slate-400 ml-1">Contexto del Negocio</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {PRESET_STYLES.business.map((s) => (
                     <button
@@ -445,7 +550,7 @@ const App: React.FC = () => {
 
               {/* Advanced Technical */}
                <div className="pt-2">
-                  <label className="text-xs font-semibold text-slate-500 ml-1 mb-2 block">Detalles Técnicos (Cámara y Ángulo)</label>
+                  <label className="text-xs font-semibold text-slate-500 ml-1 mb-2 block">Cámara y Ángulo (Opcional)</label>
                   <div className="flex flex-wrap gap-2">
                     {[...PRESET_STYLES.camera, ...PRESET_STYLES.angle].map((s) => {
                        const isCamera = PRESET_STYLES.camera.some(c => c.label === s.label);
@@ -473,11 +578,11 @@ const App: React.FC = () => {
 
             </section>
 
-            {/* 3. PROMPT & GENERATE */}
+            {/* 4. PROMPT & GENERATE */}
             <section className="space-y-3">
               <div className="flex items-center gap-2">
-                <span className="bg-yellow-500 text-black w-5 h-5 rounded flex items-center justify-center text-xs font-bold">3</span>
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Dirección Creativa (Prompt)</h3>
+                <span className="bg-yellow-500 text-black w-5 h-5 rounded flex items-center justify-center text-xs font-bold">4</span>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Prompt Mágico</h3>
               </div>
               
               <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
@@ -486,7 +591,7 @@ const App: React.FC = () => {
                   <div className="mb-4">
                     <p className="text-[11px] uppercase font-bold text-yellow-500/80 mb-2 flex items-center">
                       <SparklesIcon className="w-3 h-3 mr-1" />
-                      Ideas para {PRESET_STYLES.business.find(b => b.id === selectedBusinessId)?.label.split(' ')[1]}:
+                      Ideas rápidas para {PRESET_STYLES.business.find(b => b.id === selectedBusinessId)?.label.split(' ')[1]}:
                     </p>
                     <div className="flex flex-col gap-2">
                       {currentTemplates.map((template, idx) => (
@@ -507,11 +612,11 @@ const App: React.FC = () => {
                   <textarea
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
-                    placeholder={selectedBusinessId ? "Selecciona una idea arriba o escribe tus instrucciones..." : "Describe el escenario perfecto para tu producto..."}
+                    placeholder={selectedBusinessId ? "Selecciona una idea o escribe la tuya..." : "Describe el escenario perfecto..."}
                     className="w-full h-28 bg-black/30 border border-slate-700 rounded-lg p-4 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500/50 transition-all resize-none"
                   />
                   <div className="absolute bottom-3 right-3 text-[10px] text-slate-600 font-mono">
-                    PRO MODE
+                    NICROLABS PRO
                   </div>
                 </div>
 
@@ -555,11 +660,11 @@ const App: React.FC = () => {
             <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden sticky top-24 min-h-[500px] flex flex-col shadow-2xl ring-1 ring-white/5">
               <div className="p-4 border-b border-slate-800 bg-slate-800/30 flex justify-between items-center backdrop-blur-sm">
                  <h3 className="font-bold text-white flex items-center space-x-2 text-sm">
-                  <span className="bg-yellow-500 text-black w-5 h-5 rounded flex items-center justify-center text-xs">4</span>
+                  <span className="bg-yellow-500 text-black w-5 h-5 rounded flex items-center justify-center text-xs">5</span>
                   <span>Resultado Final</span>
                 </h3>
                 {currentImage && (
-                    <span className="px-2 py-0.5 bg-green-500/10 text-green-400 border border-green-500/20 rounded text-[10px] font-mono">RENDER COMPLETE</span>
+                    <span className="px-2 py-0.5 bg-green-500/10 text-green-400 border border-green-500/20 rounded text-[10px] font-mono">RENDER 8K</span>
                 )}
               </div>
 
@@ -573,8 +678,8 @@ const App: React.FC = () => {
                     <div className="w-20 h-20 rounded-full bg-slate-800 flex items-center justify-center mb-4">
                         <SparklesIcon className="w-8 h-8 text-slate-400" />
                     </div>
-                    <p className="text-sm text-slate-400 font-medium">El lienzo está listo</p>
-                    <p className="text-xs text-slate-600 mt-2 max-w-[200px]">Configura tu estudio a la izquierda para comenzar a crear.</p>
+                    <p className="text-sm text-slate-400 font-medium">Lienzo vacío</p>
+                    <p className="text-xs text-slate-600 mt-2 max-w-[200px]">Sube tus fotos y configura el estudio.</p>
                   </div>
                 )}
               </div>
@@ -583,8 +688,8 @@ const App: React.FC = () => {
               {history.length > 0 && (
                 <div className="p-4 bg-slate-900/90 border-t border-slate-800 backdrop-blur">
                   <div className="flex justify-between items-end mb-2">
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Historial de Sesión</p>
-                    <span className="text-[10px] text-slate-600">{history.length} tomas</span>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tus Tomas Recientes</p>
+                    <span className="text-[10px] text-slate-600">{history.length}</span>
                   </div>
                   <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x">
                     {history.map((item) => (
@@ -609,20 +714,16 @@ const App: React.FC = () => {
             <div className="bg-slate-900/50 p-5 rounded-xl border border-slate-800/50 backdrop-blur-sm">
                 <h4 className="text-yellow-500 font-bold text-xs uppercase mb-2 flex items-center">
                     <SparklesIcon className="w-3 h-3 mr-1" />
-                    Guía de Calidad
+                    Consejos de Experto
                 </h4>
                 <ul className="space-y-2 text-xs text-slate-400">
                     <li className="flex items-start gap-2">
                         <span className="text-green-500">✓</span>
-                        <span>Usa fotos con buena luz natural y fondo simple si es posible.</span>
+                        <span><strong>Tip #1:</strong> Sube una imagen de referencia de estilo (paso 2) para copiar la luz exacta de una foto que te guste de internet.</span>
                     </li>
                     <li className="flex items-start gap-2">
                         <span className="text-green-500">✓</span>
-                        <span>Selecciona el "Giro del Negocio" correcto para activar los presets de iluminación adecuados.</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                        <span className="text-green-500">✓</span>
-                        <span>Si quieres ver más detalles, elige el modo "Macro".</span>
+                        <span><strong>Tip #2:</strong> Las fotos de producto funcionan mejor si el fondo original es simple.</span>
                     </li>
                 </ul>
             </div>

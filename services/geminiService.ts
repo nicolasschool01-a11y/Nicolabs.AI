@@ -1,3 +1,4 @@
+
 import { GoogleGenAI } from "@google/genai";
 
 // Initialize the client
@@ -12,14 +13,15 @@ interface ImageInput {
 }
 
 export const editImageWithGemini = async (
-  images: ImageInput[],
-  prompt: string
+  productImages: ImageInput[],
+  prompt: string,
+  styleReferenceImage?: ImageInput
 ): Promise<string> => {
   try {
     const parts = [];
 
-    // Add all images to the request
-    images.forEach(img => {
+    // 1. Add Product Images (Subject)
+    productImages.forEach(img => {
       parts.push({
         inlineData: {
           data: img.base64,
@@ -28,7 +30,17 @@ export const editImageWithGemini = async (
       });
     });
 
-    // Add the text prompt
+    // 2. Add Style Reference Image (Optional)
+    if (styleReferenceImage) {
+      parts.push({
+        inlineData: {
+          data: styleReferenceImage.base64,
+          mimeType: styleReferenceImage.mimeType,
+        }
+      });
+    }
+
+    // 3. Add the text prompt
     parts.push({
       text: prompt,
     });

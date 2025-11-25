@@ -27,3 +27,7 @@ export interface StyleOptions {
   camera: string;
   angle: string;
 }
+
+export interface AppState {
+  styleReference: UploadedImage | null;
+}
