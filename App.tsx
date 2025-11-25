@@ -1,0 +1,615 @@
+import React, { useState, useEffect, useRef } from 'react';
+import ImageUploader from './components/ImageUploader';
+import ResultDisplay from './components/ResultDisplay';
+import LoginPage from './components/LoginPage';
+import { WandIcon, SparklesIcon, LogoIcon } from './components/Icons';
+import { editImageWithGemini, fileToBase64 } from './services/geminiService';
+import { ProcessingState, UploadedImage, StyleOptions, GeneratedImage } from './types';
+
+// --- CONFIGURATION DATA PRO ---
+
+const LOADING_MESSAGES = [
+  "Calibrando lentes virtuales 85mm...",
+  "Configurando esquema de iluminación de 3 puntos...",
+  "Analizando geometría y materiales del producto...",
+  "Renderizando texturas en resolución 8K...",
+  "Aplicando corrección de color cinemática...",
+  "Finalizando post-producción digital..."
+];
+
+const PRESET_STYLES = {
+  business: [
+    { 
+      id: "gastro",
+      label: "🍔 Gastronomía Gourmet", 
+      desc: "Platillos, postres y bebidas. Enfoque en texturas deliciosas.",
+      value: "Fotografía gastronómica de alta gama (Michelin Star style). Iluminación que resalta la frescura, el brillo de las salsas y la textura de los ingredientes. Profundidad de campo suave." 
+    },
+    { 
+      id: "ecommerce",
+      label: "🛍️ E-commerce Pro", 
+      desc: "Fondo limpio y nítido. Ideal para Amazon, Shopify y Catálogos.",
+      value: "Fotografía de producto comercial (Packshot) de ultra alta definición. Fondo limpio, iluminación de estudio perfectamente blanca y difusa, enfoque nítido en todo el producto (focus stacking)." 
+    },
+    { 
+      id: "fashion",
+      label: "👗 Moda Editorial", 
+      desc: "Ropa, joyería y accesorios. Estilo revista de lujo.",
+      value: "Fotografía de moda editorial estilo Vogue. Iluminación dramática pero favorecedora, poses dinámicas si hay modelos, texturas de tela ricas y detalladas. Estética sofisticada." 
+    },
+    { 
+      id: "beauty",
+      label: "💄 Belleza & Cosmética", 
+      desc: "Cremas, perfumes y maquillaje. Sensación de pureza y lujo.",
+      value: "Fotografía publicitaria de cosméticos premium. Superficies reflectantes (vidrio, agua, espejos), iluminación etérea y suave, sensación de higiene, pureza y lujo absoluto." 
+    },
+    { 
+      id: "realestate",
+      label: "🏠 Deco & Inmobiliaria", 
+      desc: "Muebles y espacios. Gran angular y luz natural.",
+      value: "Fotografía de arquitectura e interiorismo (Architectural Digest). Lentes gran angular rectilíneos, luz natural abundante, espacios perfectamente organizados y acogedores." 
+    },
+    { 
+      id: "tech",
+      label: "📱 Tech & Gadgets", 
+      desc: "Electrónica y gadgets. Luces neón y acabados metálicos.",
+      value: "Fotografía tecnológica futurista. Iluminación con acentos de color (rim light), reflejos metálicos nítidos, fondo oscuro y elegante, sensación de innovación." 
+    },
+  ],
+  vibe: [
+    { label: "💎 Lujo Minimalista", desc: "Menos es más. Fondos mármol, seda, neutros.", value: "Estética minimalista de lujo, paleta de colores neutra (beige, blanco, gris), materiales nobles como mármol o seda." },
+    { label: "🌿 Orgánico & Natural", desc: "Luz solar, plantas, madera, aire libre.", value: "Estilo biofílico y orgánico. Luz solar dura o filtrada por árboles, sombras naturales, elementos de madera, piedra y plantas vivas." },
+    { label: "🌆 Urbano & Street", desc: "Concreto, ciudad, asfalto, moderno.", value: "Estilo urbano callejero (Streetwear). Fondos de concreto, ciudad desenfocada, luz de día nublado o atardecer urbano." },
+    { label: "🎨 Pop & Color Block", desc: "Colores vibrantes, sólidos y divertidos.", value: "Estilo Pop Art moderno. Fondos de colores sólidos vibrantes y contrastantes, iluminación dura, sombras definidas, energía juvenil." },
+    { label: "🌑 Dark & Moody", desc: "Oscuro, elegante, misterioso y premium.", value: "Estilo 'Dark Academy' o Moody. Clave baja, fondo oscuro o negro texturizado, iluminación puntual que recorta la silueta, muy elegante." },
+    { label: "🕰️ Retro Vintage", desc: "Nostalgia, grano de película, calidez.", value: "Estética retro analógica. Colores ligeramente desaturados, calidez, grano de película sutil, sensación de nostalgia." },
+  ],
+  lighting: [
+    { label: "☀️ Golden Hour", desc: "Atardecer cálido", value: "Iluminación de hora dorada (Golden Hour). Luz solar baja, cálida y anaranjada, sombras largas y estéticas, destellos de lente (lens flare) sutiles." },
+    { label: "💡 Estudio Softbox", desc: "Luz perfecta difusa", value: "Iluminación de estudio profesional con Softbox gigante. Luz envolvente, sombras extremadamente suaves, perfecto para ver todos los detalles." },
+    { label: "🌓 Dramático (Chiaroscuro)", desc: "Alto contraste", value: "Iluminación de alto contraste (Chiaroscuro). Sombras profundas y luces brillantes, crea volumen y drama, muy artístico." },
+    { label: "☁️ Luz de Ventana", desc: "Natural y suave", value: "Iluminación natural de ventana norte. Luz blanca, fría y suave, muy realista y honesta." },
+    { label: "🟣 Neón Cyberpunk", desc: "Azul y Rosa", value: "Iluminación creativa con geles de color. Luces de borde azules y magentas (estilo Cyberpunk), fondo oscuro." },
+  ],
+  camera: [
+    { label: "Macro (Detalle)", desc: "Primer plano extremo", value: "Lente Macro 100mm. Primerísimo primer plano, desenfoque de fondo (bokeh) cremoso y extremo, enfoque crítico en el detalle principal." },
+    { label: "Retrato (50mm-85mm)", desc: "Visión natural", value: "Lente Prime de 50mm u 85mm. Compresión de perspectiva natural, desenfoque de fondo agradable, look estándar profesional." },
+    { label: "Gran Angular", desc: "Espacioso", value: "Lente Gran Angular 24mm. Sensación de amplitud, líneas dinámicas, ideal para mostrar el entorno completo." },
+  ],
+  angle: [
+    { label: "Frontal (Héroe)", desc: "A nivel de ojos", value: "Ángulo a nivel de los ojos o ligeramente contrapicado (Hero Shot). Hace que el producto se vea imponente y majestuoso." },
+    { label: "Zenital (Flat Lay)", desc: "Desde arriba", value: "Vista totalmente cenital (Flat Lay) a 90 grados. Composición geométrica, ordenado, ideal para mostrar conjuntos de objetos." },
+    { label: "45 Grados (Isométrico)", desc: "Clásico", value: "Ángulo de 45 grados (tres cuartos). Muestra volumen, profundidad y lados del producto simultáneamente." },
+  ]
+};
+
+// Smart Templates based on Business Category
+const PROMPT_TEMPLATES: Record<string, string[]> = {
+  "gastro": [
+    "Sobre una mesa de madera rústica envejecida en una terraza italiana.",
+    "Flotando dinámicamente con ingredientes frescos volando alrededor (splash).",
+    "Primer plano macro con vapor saliendo, fondo oscuro de cocina profesional."
+  ],
+  "fashion": [
+    "Modelo invisible (Ghost Mannequin) en un entorno de estudio blanco puro.",
+    "Colocado sobre rocas volcánicas negras en una playa al atardecer.",
+    "En una calle de París con arquitectura clásica desenfocada al fondo."
+  ],
+  "ecommerce": [
+    "Sobre un podio cilíndrico color pastel con sombras duras modernas.",
+    "Fondo infinito blanco puro (RGB 255,255,255) con reflejo sutil en el suelo.",
+    "Composición geométrica con formas abstractas de vidrio y metal."
+  ],
+  "beauty": [
+    "Rodeado de flores frescas y gotas de agua sobre una superficie de espejo.",
+    "Sobre una textura de seda satinada color champagne con luz suave.",
+    "En un baño de mármol blanco de lujo con luz de mañana."
+  ],
+  "realestate": [
+    "Estilo nórdico minimalista, luz de día, alfombras y plantas verdes.",
+    "Loft industrial con paredes de ladrillo y grandes ventanales de hierro.",
+    "Salón nocturno acogedor con chimenea encendida y luces cálidas."
+  ],
+  "tech": [
+    "Sobre una superficie de metal cepillado con luces de neón azules de fondo.",
+    "Flotando en un espacio oscuro con particulas de luz (estilo Matrix).",
+    "Escritorio setup minimalista de madera con plantas y luz natural."
+  ]
+};
+
+const App: React.FC = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [images, setImages] = useState<UploadedImage[]>([]);
+  const [prompt, setPrompt] = useState('');
+  
+  // State for IDs to match the new structure
+  const [selectedBusinessId, setSelectedBusinessId] = useState<string>('');
+  const [selectedStyles, setSelectedStyles] = useState<StyleOptions>({
+    business: '',
+    vibe: '',
+    lighting: '',
+    camera: '',
+    angle: ''
+  });
+  
+  const [history, setHistory] = useState<GeneratedImage[]>([]);
+  const [currentImage, setCurrentImage] = useState<GeneratedImage | null>(null);
+  
+  const [processingState, setProcessingState] = useState<ProcessingState>({
+    isLoading: false,
+    error: null,
+    statusMessage: ''
+  });
+
+  const loadingIntervalRef = useRef<number | null>(null);
+
+  // --- HANDLERS ---
+
+  const handleLogin = () => {
+    // In a real app, this would validate credentials
+    setIsAuthenticated(true);
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setImages([]);
+    setPrompt('');
+    setHistory([]);
+    setCurrentImage(null);
+  }
+
+  const handleImageAdd = (file: File, id: number) => {
+    const newImage: UploadedImage = {
+      id,
+      file,
+      previewUrl: URL.createObjectURL(file)
+    };
+    setImages(prev => [...prev.filter(img => img.id !== id), newImage].sort((a, b) => a.id - b.id));
+  };
+
+  const handleImageRemove = (id: number) => {
+    setImages(prev => prev.filter(img => img.id !== id));
+  };
+
+  const selectBusiness = (id: string, value: string) => {
+    setSelectedBusinessId(id === selectedBusinessId ? '' : id);
+    setSelectedStyles(prev => ({ ...prev, business: id === selectedBusinessId ? '' : value }));
+  };
+
+  const toggleStyle = (category: keyof StyleOptions, value: string) => {
+    setSelectedStyles(prev => ({ ...prev, [category]: prev[category] === value ? '' : value }));
+  };
+
+  const applyTemplate = (templateText: string) => {
+    setPrompt(templateText);
+  };
+
+  const startLoadingMessages = () => {
+    let index = 0;
+    setProcessingState(prev => ({ ...prev, statusMessage: LOADING_MESSAGES[0] }));
+    loadingIntervalRef.current = window.setInterval(() => {
+      index = (index + 1) % LOADING_MESSAGES.length;
+      setProcessingState(prev => ({ ...prev, statusMessage: LOADING_MESSAGES[index] }));
+    }, 2500);
+  };
+
+  const stopLoadingMessages = () => {
+    if (loadingIntervalRef.current) {
+      clearInterval(loadingIntervalRef.current);
+      loadingIntervalRef.current = null;
+    }
+  };
+
+  const handleGenerate = async () => {
+    if (images.length === 0 || !prompt.trim()) return;
+
+    setProcessingState({ isLoading: true, error: null });
+    startLoadingMessages();
+
+    try {
+      const imagesPayload = await Promise.all(images.map(async (img) => ({
+        base64: await fileToBase64(img.file),
+        mimeType: img.file.type
+      })));
+
+      // --- ADVANCED PROMPT ENGINEERING PRO STUDIO ---
+      let finalPrompt = "";
+      
+      // Role & Goal
+      finalPrompt += `Actúa como un fotógrafo de clase mundial y director de arte experto. `;
+      finalPrompt += `Tu objetivo es crear una imagen comercial galardonada integrando los productos de referencia de manera fotorrealista. `;
+      
+      // Reference Handling
+      if (images.length > 0) {
+        const imageRefs = images.map(img => `[Imagen ${img.id}]`).join(', ');
+        finalPrompt += `REFERENCIAS: Utiliza ${imageRefs} como el producto principal. `;
+        finalPrompt += `CRÍTICO: Debes mantener la forma, logotipos y detalles del producto EXACTAMENTE como en la referencia. `;
+      }
+
+      // Context & Style
+      if (selectedStyles.business) finalPrompt += `\nCONTEXTO: ${selectedStyles.business}`;
+      
+      // User Instruction
+      finalPrompt += `\n\nESCENA DESEADA: "${prompt}"`;
+
+      // Technical Params
+      const technicalParams = [];
+      if (selectedStyles.vibe) technicalParams.push(`Estilo Visual: ${selectedStyles.vibe}`);
+      if (selectedStyles.lighting) technicalParams.push(`Iluminación: ${selectedStyles.lighting}`);
+      if (selectedStyles.camera) technicalParams.push(`Óptica: ${selectedStyles.camera}`);
+      if (selectedStyles.angle) technicalParams.push(`Ángulo: ${selectedStyles.angle}`);
+      
+      if (technicalParams.length > 0) {
+        finalPrompt += `\n\nESPECIFICACIONES TÉCNICAS:\n${technicalParams.join('\n')}`;
+      }
+      
+      // High Quality Enforcers
+      finalPrompt += `\n\nCALIDAD DE SALIDA:\n`;
+      finalPrompt += `- Resolución 8K, texturas hiperrealistas.\n`;
+      finalPrompt += `- Color grading cinematográfico profesional.\n`;
+      finalPrompt += `- Sin distorsiones en el producto, sin texto alucinatorio.\n`;
+
+      console.log("Generando con prompt:", finalPrompt);
+
+      const resultUrl = await editImageWithGemini(imagesPayload, finalPrompt);
+      
+      // Success Handling
+      const newCreation: GeneratedImage = {
+        id: Date.now().toString(),
+        imageUrl: resultUrl,
+        prompt: prompt,
+        timestamp: Date.now()
+      };
+
+      setHistory(prev => [newCreation, ...prev]);
+      setCurrentImage(newCreation);
+      setProcessingState({ isLoading: false, error: null, statusMessage: '' });
+
+    } catch (error: any) {
+      setProcessingState({ 
+        isLoading: false, 
+        error: error.message || "Error al generar la imagen.",
+        statusMessage: ''
+      });
+    } finally {
+      stopLoadingMessages();
+    }
+  };
+
+  // --- RENDER HELPERS ---
+
+  if (!isAuthenticated) {
+    return <LoginPage onLogin={handleLogin} />;
+  }
+
+  const currentTemplates = selectedBusinessId ? PROMPT_TEMPLATES[selectedBusinessId] : [];
+
+  return (
+    <div className="min-h-screen bg-[#0B1120] text-slate-200 selection:bg-yellow-500/30 pb-20 font-sans">
+      
+      {/* --- HEADER --- */}
+      <header className="border-b border-slate-800 bg-[#0F172A]/80 backdrop-blur-xl sticky top-0 z-50 shadow-2xl">
+        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="bg-gradient-to-br from-yellow-400 to-orange-600 p-2 rounded-lg shadow-lg shadow-orange-500/20">
+              <LogoIcon className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold tracking-tight text-white leading-none">
+                Nicolabs<span className="text-yellow-400">.AI</span>
+              </h1>
+              <span className="text-[10px] text-slate-400 tracking-wider font-medium uppercase block -mt-0.5">Estudio Pro</span>
+            </div>
+          </div>
+          <div className="flex items-center space-x-4">
+            <div className="hidden md:flex items-center space-x-2 text-xs font-medium text-slate-500 bg-slate-900/50 px-3 py-1.5 rounded-full border border-slate-800">
+              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+              <span>Gemini 2.5 Flash Activo</span>
+            </div>
+            <button onClick={handleLogout} className="text-xs text-slate-400 hover:text-white transition-colors">
+              Salir
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-4 py-8">
+        
+        <div className="grid lg:grid-cols-12 gap-8 items-start">
+          
+          {/* --- LEFT COLUMN: CONTROLS (7/12) --- */}
+          <div className="lg:col-span-7 space-y-8">
+            
+            {/* 1. UPLOADER */}
+            <section className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                  <span className="bg-yellow-500 text-black w-5 h-5 rounded flex items-center justify-center text-xs">1</span>
+                  Sube tus Productos
+                </h3>
+                <span className="text-xs text-slate-500">Máx 3 imágenes de referencia</span>
+              </div>
+              <ImageUploader 
+                images={images}
+                onImageAdd={handleImageAdd}
+                onImageRemove={handleImageRemove}
+              />
+            </section>
+
+            {/* 2. STYLE SELECTOR */}
+            <section className="space-y-6 bg-slate-900/50 p-6 rounded-2xl border border-slate-800">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="bg-yellow-500 text-black w-5 h-5 rounded flex items-center justify-center text-xs font-bold">2</span>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Configuración del Estudio</h3>
+              </div>
+              
+              {/* Business Type Grid */}
+              <div className="space-y-3">
+                <label className="text-xs font-semibold text-slate-400 ml-1">Contexto del Negocio (Selección Única)</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {PRESET_STYLES.business.map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => selectBusiness(s.id, s.value)}
+                      className={`
+                        relative group p-4 rounded-xl text-left border transition-all duration-200
+                        ${selectedBusinessId === s.id
+                          ? 'bg-yellow-500/10 border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.1)]'
+                          : 'bg-slate-800 border-slate-700 hover:border-slate-500 hover:bg-slate-750'
+                        }
+                      `}
+                    >
+                      <div className="flex justify-between items-start mb-1">
+                        <span className="font-bold text-sm text-slate-100">{s.label}</span>
+                        {selectedBusinessId === s.id && <span className="text-yellow-400 text-xs">●</span>}
+                      </div>
+                      <p className="text-[11px] text-slate-400 leading-tight group-hover:text-slate-300 transition-colors">
+                        {s.desc}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="h-px bg-slate-800 w-full my-4"></div>
+
+              {/* Vibe & Lighting */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 {/* Vibe */}
+                 <div className="space-y-3">
+                    <label className="text-xs font-semibold text-slate-400 ml-1">Atmósfera Visual</label>
+                    <div className="flex flex-col gap-2">
+                      {PRESET_STYLES.vibe.map((s) => (
+                        <button
+                          key={s.label}
+                          onClick={() => toggleStyle('vibe', s.value)}
+                          className={`
+                            px-3 py-2 rounded-lg text-xs text-left border transition-all flex justify-between items-center
+                            ${selectedStyles.vibe === s.value 
+                              ? 'bg-purple-500/20 border-purple-500 text-purple-100' 
+                              : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-600 hover:text-slate-200'
+                            }
+                          `}
+                        >
+                          <span className="font-medium">{s.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                 </div>
+
+                 {/* Lighting */}
+                 <div className="space-y-3">
+                    <label className="text-xs font-semibold text-slate-400 ml-1">Iluminación de Estudio</label>
+                    <div className="flex flex-col gap-2">
+                      {PRESET_STYLES.lighting.map((s) => (
+                        <button
+                          key={s.label}
+                          onClick={() => toggleStyle('lighting', s.value)}
+                          className={`
+                            px-3 py-2 rounded-lg text-xs text-left border transition-all flex justify-between items-center
+                            ${selectedStyles.lighting === s.value 
+                              ? 'bg-orange-500/20 border-orange-500 text-orange-100' 
+                              : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-600 hover:text-slate-200'
+                            }
+                          `}
+                        >
+                          <span className="font-medium">{s.label}</span>
+                          <span className="text-[10px] opacity-60 ml-2 hidden sm:inline-block truncate max-w-[100px]">{s.desc}</span>
+                        </button>
+                      ))}
+                    </div>
+                 </div>
+              </div>
+
+              {/* Advanced Technical */}
+               <div className="pt-2">
+                  <label className="text-xs font-semibold text-slate-500 ml-1 mb-2 block">Detalles Técnicos (Cámara y Ángulo)</label>
+                  <div className="flex flex-wrap gap-2">
+                    {[...PRESET_STYLES.camera, ...PRESET_STYLES.angle].map((s) => {
+                       const isCamera = PRESET_STYLES.camera.some(c => c.label === s.label);
+                       const type = isCamera ? 'camera' : 'angle';
+                       const isSelected = selectedStyles[type] === s.value;
+                       
+                       return (
+                        <button
+                          key={s.label}
+                          onClick={() => toggleStyle(type, s.value)}
+                          className={`
+                            px-3 py-1.5 rounded text-[11px] font-medium border transition-all
+                            ${isSelected
+                              ? 'bg-emerald-500/20 border-emerald-500 text-emerald-100' 
+                              : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-600'
+                            }
+                          `}
+                        >
+                          {s.label}
+                        </button>
+                       )
+                    })}
+                  </div>
+               </div>
+
+            </section>
+
+            {/* 3. PROMPT & GENERATE */}
+            <section className="space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="bg-yellow-500 text-black w-5 h-5 rounded flex items-center justify-center text-xs font-bold">3</span>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Dirección Creativa (Prompt)</h3>
+              </div>
+              
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
+                {/* Smart Templates */}
+                {selectedBusinessId && currentTemplates && (
+                  <div className="mb-4">
+                    <p className="text-[11px] uppercase font-bold text-yellow-500/80 mb-2 flex items-center">
+                      <SparklesIcon className="w-3 h-3 mr-1" />
+                      Ideas para {PRESET_STYLES.business.find(b => b.id === selectedBusinessId)?.label.split(' ')[1]}:
+                    </p>
+                    <div className="flex flex-col gap-2">
+                      {currentTemplates.map((template, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => applyTemplate(template)}
+                          className="text-left text-xs text-slate-300 hover:text-white bg-slate-800/50 hover:bg-slate-800 border border-slate-700 hover:border-slate-500 p-2.5 rounded-lg transition-colors group"
+                        >
+                          <span className="opacity-50 group-hover:opacity-100 mr-2 transition-opacity">✨</span>
+                          "{template}"
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="relative">
+                  <textarea
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    placeholder={selectedBusinessId ? "Selecciona una idea arriba o escribe tus instrucciones..." : "Describe el escenario perfecto para tu producto..."}
+                    className="w-full h-28 bg-black/30 border border-slate-700 rounded-lg p-4 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500/50 transition-all resize-none"
+                  />
+                  <div className="absolute bottom-3 right-3 text-[10px] text-slate-600 font-mono">
+                    PRO MODE
+                  </div>
+                </div>
+
+                <div className="mt-5">
+                  <button
+                    onClick={handleGenerate}
+                    disabled={images.length === 0 || !prompt || processingState.isLoading}
+                    className={`
+                      w-full py-4 rounded-xl font-bold text-base shadow-xl flex items-center justify-center space-x-2 transition-all duration-300
+                      ${(images.length === 0 || !prompt || processingState.isLoading)
+                        ? 'bg-slate-800 border border-slate-700 text-slate-500 cursor-not-allowed opacity-50'
+                        : 'bg-gradient-to-r from-yellow-400 via-yellow-500 to-orange-500 text-slate-900 hover:shadow-orange-500/30 hover:-translate-y-0.5'
+                      }
+                    `}
+                  >
+                    {processingState.isLoading ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-slate-900/30 border-t-slate-900 rounded-full animate-spin"></div>
+                        <span>{processingState.statusMessage || 'Renderizando...'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <WandIcon className="w-5 h-5" />
+                        <span>Generar Fotografía Pro</span>
+                      </>
+                    )}
+                  </button>
+                  {processingState.error && (
+                    <div className="mt-3 text-xs text-red-400 text-center bg-red-900/10 p-2 rounded border border-red-900/30">
+                      ⚠️ {processingState.error}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </section>
+          </div>
+
+          {/* --- RIGHT COLUMN: RESULT (5/12) --- */}
+          <div className="lg:col-span-5 space-y-6">
+            
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden sticky top-24 min-h-[500px] flex flex-col shadow-2xl ring-1 ring-white/5">
+              <div className="p-4 border-b border-slate-800 bg-slate-800/30 flex justify-between items-center backdrop-blur-sm">
+                 <h3 className="font-bold text-white flex items-center space-x-2 text-sm">
+                  <span className="bg-yellow-500 text-black w-5 h-5 rounded flex items-center justify-center text-xs">4</span>
+                  <span>Resultado Final</span>
+                </h3>
+                {currentImage && (
+                    <span className="px-2 py-0.5 bg-green-500/10 text-green-400 border border-green-500/20 rounded text-[10px] font-mono">RENDER COMPLETE</span>
+                )}
+              </div>
+
+              <div className="flex-1 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-[#050912] flex items-center justify-center relative p-4 group">
+                {currentImage ? (
+                  <div className="w-full h-full flex flex-col transition-all duration-500 animate-in fade-in zoom-in-95">
+                    <ResultDisplay imageUrl={currentImage.imageUrl} />
+                  </div>
+                ) : (
+                  <div className="text-center p-8 opacity-30 flex flex-col items-center">
+                    <div className="w-20 h-20 rounded-full bg-slate-800 flex items-center justify-center mb-4">
+                        <SparklesIcon className="w-8 h-8 text-slate-400" />
+                    </div>
+                    <p className="text-sm text-slate-400 font-medium">El lienzo está listo</p>
+                    <p className="text-xs text-slate-600 mt-2 max-w-[200px]">Configura tu estudio a la izquierda para comenzar a crear.</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Session History Strip */}
+              {history.length > 0 && (
+                <div className="p-4 bg-slate-900/90 border-t border-slate-800 backdrop-blur">
+                  <div className="flex justify-between items-end mb-2">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Historial de Sesión</p>
+                    <span className="text-[10px] text-slate-600">{history.length} tomas</span>
+                  </div>
+                  <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x">
+                    {history.map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => setCurrentImage(item)}
+                        className={`relative w-20 h-20 rounded-lg overflow-hidden border-2 flex-shrink-0 transition-all snap-start ${
+                          currentImage?.id === item.id 
+                          ? 'border-yellow-500 ring-2 ring-yellow-500/20 scale-105 z-10' 
+                          : 'border-slate-700 hover:border-slate-500 grayscale hover:grayscale-0 opacity-70 hover:opacity-100'
+                        }`}
+                      >
+                        <img src={item.imageUrl} className="w-full h-full object-cover" alt="History" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Pro Tips with Rotation */}
+            <div className="bg-slate-900/50 p-5 rounded-xl border border-slate-800/50 backdrop-blur-sm">
+                <h4 className="text-yellow-500 font-bold text-xs uppercase mb-2 flex items-center">
+                    <SparklesIcon className="w-3 h-3 mr-1" />
+                    Guía de Calidad
+                </h4>
+                <ul className="space-y-2 text-xs text-slate-400">
+                    <li className="flex items-start gap-2">
+                        <span className="text-green-500">✓</span>
+                        <span>Usa fotos con buena luz natural y fondo simple si es posible.</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                        <span className="text-green-500">✓</span>
+                        <span>Selecciona el "Giro del Negocio" correcto para activar los presets de iluminación adecuados.</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                        <span className="text-green-500">✓</span>
+                        <span>Si quieres ver más detalles, elige el modo "Macro".</span>
+                    </li>
+                </ul>
+            </div>
+
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+};
+
+export default App;
