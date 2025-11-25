@@ -5,8 +5,6 @@ import { GoogleGenAI } from "@google/genai";
 // API Key is injected via process.env.API_KEY
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-const MODEL_NAME = 'gemini-2.5-flash-image';
-
 interface ImageInput {
   base64: string;
   mimeType: string;
@@ -15,7 +13,9 @@ interface ImageInput {
 export const editImageWithGemini = async (
   productImages: ImageInput[],
   prompt: string,
-  styleReferenceImage?: ImageInput
+  styleReferenceImage?: ImageInput,
+  aspectRatio: string = "1:1",
+  is4K: boolean = false
 ): Promise<string> => {
   try {
     const parts = [];
@@ -45,14 +45,24 @@ export const editImageWithGemini = async (
       text: prompt,
     });
 
+    // Determine Model
+    // Use Pro model for non-square aspect ratios or 4K requests for better adherence
+    // Use Flash for standard 1:1 fast generations
+    const model = (aspectRatio !== '1:1' || is4K) 
+      ? 'gemini-3-pro-image-preview' 
+      : 'gemini-2.5-flash-image';
+
     const response = await ai.models.generateContent({
-      model: MODEL_NAME,
+      model: model,
       contents: {
         parts: parts,
       },
-      // Config for Nano Banana / Gemini Flash Image
       config: {
-        // Nano banana models do not support responseMimeType or responseSchema
+        imageConfig: {
+          aspectRatio: aspectRatio,
+          // Only request high res if using the Pro model
+          imageSize: (is4K && model === 'gemini-3-pro-image-preview') ? '4K' : undefined 
+        }
       },
     });
 

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { DownloadIcon, SparklesIcon } from './Icons';
 
@@ -16,11 +17,12 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ imageUrl }) => {
   };
 
   return (
-    <div className="relative w-full max-w-md mx-auto aspect-square bg-slate-900 rounded-xl overflow-hidden border border-yellow-500/30 shadow-[0_0_30px_rgba(234,179,8,0.1)] group">
+    <div className="relative w-full max-w-md mx-auto bg-slate-900 rounded-xl overflow-hidden border border-yellow-500/30 shadow-[0_0_30px_rgba(234,179,8,0.1)] group">
+      {/* Removed aspect-square to allow image to dictate height (16:9, 9:16 support) */}
       <img
         src={imageUrl}
         alt="Generada"
-        className="w-full h-full object-contain"
+        className="w-full h-auto object-contain min-h-[300px]"
       />
       
       {/* Overlay Actions */}
@@ -37,7 +39,7 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ imageUrl }) => {
        <div className="absolute top-4 left-4">
         <div className="flex items-center space-x-1 bg-yellow-500/20 backdrop-blur-md border border-yellow-500/30 text-yellow-300 px-3 py-1 rounded-full text-xs font-semibold shadow-lg">
           <SparklesIcon className="w-3 h-3" />
-          <span>Gemini 2.5 Flash</span>
+          <span>Gemini Pro Vision</span>
         </div>
       </div>
     </div>

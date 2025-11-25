@@ -4,7 +4,7 @@ import ImageUploader from './components/ImageUploader';
 import ResultDisplay from './components/ResultDisplay';
 import LoginPage from './components/LoginPage';
 import Onboarding from './components/Onboarding';
-import { WandIcon, SparklesIcon, LogoIcon, ArrowLeftIcon, PinterestIcon, UploadIcon, XIcon, CheckCircleIcon, LayoutIcon } from './components/Icons';
+import { WandIcon, SparklesIcon, LogoIcon, ArrowLeftIcon, PinterestIcon, UploadIcon, XIcon, CheckCircleIcon, LayoutIcon, HdIcon } from './components/Icons';
 import { editImageWithGemini, fileToBase64, addWatermark } from './services/geminiService';
 import { ProcessingState, UploadedImage, StyleOptions, GeneratedImage } from './types';
 
@@ -34,9 +34,9 @@ const PRESET_FORMATS = [
   },
   { 
     id: "flyer", 
-    label: "Flyer Promo", 
+    label: "Flyer (3:4)", 
     desc: "Volante Publicitario", 
-    prompt: "Diseño de Flyer Publicitario. Composición gráfica con espacio negativo claro para agregar titulares grandes. Fondo limpio y atractivo que guíe la vista al producto." 
+    prompt: "Diseño de Flyer Publicitario Vertical (3:4). Composición gráfica limpia con espacio negativo claro en la parte superior para titulares grandes. Fondo atractivo que guíe la vista al producto." 
   },
   { 
     id: "cover", 
@@ -46,11 +46,20 @@ const PRESET_FORMATS = [
   },
   { 
     id: "thumbnail", 
-    label: "Miniatura YT", 
+    label: "Miniatura (16:9)", 
     desc: "YouTube Thumb", 
-    prompt: "Estilo Miniatura de YouTube de alto impacto. Fondo contrastante, colores vibrantes, silueta del producto muy definida, espacio para texto grande." 
+    prompt: "Estilo Miniatura de YouTube de alto impacto (16:9). Fondo contrastante, colores vibrantes, silueta del producto muy definida, espacio para texto grande." 
   }
 ];
+
+// Mapping formats to Gemini API aspect ratios
+const FORMAT_MAP: Record<string, string> = {
+  'post_square': '1:1',
+  'story': '9:16',
+  'flyer': '3:4',
+  'cover': '16:9',
+  'thumbnail': '16:9'
+};
 
 const PRESET_STYLES = {
   business: [
@@ -175,7 +184,8 @@ const App: React.FC = () => {
     lighting: '',
     camera: '',
     angle: '',
-    format: 'post_square'
+    format: 'post_square',
+    is4K: false
   });
   
   const [history, setHistory] = useState<GeneratedImage[]>([]);
@@ -243,8 +253,12 @@ const App: React.FC = () => {
     setSelectedStyles(prev => ({ ...prev, business: id === selectedBusinessId ? '' : value }));
   };
 
-  const toggleStyle = (category: keyof StyleOptions, value: string) => {
-    setSelectedStyles(prev => ({ ...prev, [category]: prev[category] === value ? '' : value }));
+  const toggleStyle = (category: keyof StyleOptions, value: any) => {
+     if (typeof value === 'boolean') {
+        setSelectedStyles(prev => ({ ...prev, [category]: value }));
+     } else {
+        setSelectedStyles(prev => ({ ...prev, [category]: prev[category as keyof StyleOptions] === value ? '' : value }));
+     }
   };
 
   const applyTemplate = (templateText: string) => {
@@ -337,13 +351,26 @@ const App: React.FC = () => {
       
       // High Quality Enforcers
       finalPrompt += `\n\nCALIDAD DE SALIDA:\n`;
-      finalPrompt += `- Resolución 8K, texturas hiperrealistas.\n`;
-      finalPrompt += `- Color grading cinematográfico profesional.\n`;
+      if (selectedStyles.is4K) {
+         finalPrompt += `- RESOLUCIÓN EXTREMA 4K/8K.\n- Renderizado RAW sin compresión.\n- Máximo detalle de textura.`;
+      } else {
+         finalPrompt += `- Resolución 8K, texturas hiperrealistas.\n`;
+         finalPrompt += `- Color grading cinematográfico profesional.\n`;
+      }
       finalPrompt += `- Integración perfecta de luces y sombras.\n`;
 
       console.log("Generando con prompt:", finalPrompt);
 
-      let resultUrl = await editImageWithGemini(imagesPayload, finalPrompt, styleRefPayload);
+      // Determine Ratio
+      const aspectRatio = FORMAT_MAP[selectedStyles.format] || '1:1';
+
+      let resultUrl = await editImageWithGemini(
+        imagesPayload, 
+        finalPrompt, 
+        styleRefPayload, 
+        aspectRatio, 
+        selectedStyles.is4K || false
+      );
       
       // Apply Watermark if Guest
       if (isGuest) {
@@ -403,7 +430,7 @@ const App: React.FC = () => {
               <h1 className="text-xl font-bold tracking-tight text-white leading-none">
                 Nicrolabs<span className="text-yellow-400">.AI</span>
               </h1>
-              <span className="text-[10px] text-slate-400 tracking-wider font-medium uppercase block -mt-0.5">Studio v2.5</span>
+              <span className="text--[10px] text-slate-400 tracking-wider font-medium uppercase block -mt-0.5">Studio v2.5</span>
             </div>
           </div>
           <div className="flex items-center space-x-4">
@@ -421,7 +448,7 @@ const App: React.FC = () => {
 
             <div className="hidden md:flex items-center space-x-2 text-xs font-medium text-slate-500 bg-slate-900/50 px-3 py-1.5 rounded-full border border-slate-800">
               <span className={`w-2 h-2 rounded-full ${isGuest ? 'bg-orange-500' : 'bg-green-500'} animate-pulse`}></span>
-              <span>{isGuest ? 'Modo Demo' : 'Gemini 2.5 Flash'}</span>
+              <span>{isGuest ? 'Modo Demo' : 'Gemini Pro'}</span>
             </div>
             {isGuest ? (
               <button onClick={handleLogout} className="px-3 py-1 bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 rounded-full text-xs font-semibold hover:bg-yellow-500 hover:text-black transition-all">
@@ -646,8 +673,17 @@ const App: React.FC = () => {
               </div>
 
               {/* Advanced Technical */}
-               <div className="pt-2">
-                  <label className="text-xs font-semibold text-slate-500 ml-1 mb-2 block">Cámara y Ángulo (Opcional)</label>
+               <div className="pt-4 border-t border-slate-800 mt-4">
+                  <div className="flex justify-between items-center mb-2">
+                      <label className="text-xs font-semibold text-slate-500 ml-1">Cámara y Ajustes Avanzados</label>
+                      <button 
+                        onClick={() => toggleStyle('is4K', !selectedStyles.is4K)}
+                        className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all ${selectedStyles.is4K ? 'bg-blue-500 text-white shadow-[0_0_10px_rgba(59,130,246,0.5)]' : 'bg-slate-800 text-slate-500 hover:bg-slate-700'}`}
+                      >
+                         <HdIcon className="w-3 h-3" />
+                         <span>{selectedStyles.is4K ? '4K Ultra ON' : '4K OFF'}</span>
+                      </button>
+                  </div>
                   <div className="flex flex-wrap gap-2">
                     {[...PRESET_STYLES.camera, ...PRESET_STYLES.angle].map((s) => {
                        const isCamera = PRESET_STYLES.camera.some(c => c.label === s.label);
@@ -780,9 +816,9 @@ const App: React.FC = () => {
                 )}
               </div>
 
-              <div className="flex-1 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-[#050912] flex items-center justify-center relative p-4 group">
+              <div className="flex-1 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-[#050912] flex items-center justify-center relative p-4 group min-h-[400px]">
                 {currentImage ? (
-                  <div className="w-full h-full flex flex-col transition-all duration-500 animate-in fade-in zoom-in-95">
+                  <div className="w-full flex flex-col transition-all duration-500 animate-in fade-in zoom-in-95">
                     <ResultDisplay imageUrl={currentImage.imageUrl} />
                   </div>
                 ) : (
