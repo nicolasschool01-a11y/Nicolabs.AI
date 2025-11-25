@@ -1,5 +1,5 @@
 {
-  "name": "Nicolabs.AI",
+  "name": "Nicrolabs.AI",
   "description": "Una potente aplicación de edición de imágenes impulsada por Gemini 2.5 Flash Image (Nano Banana). Sube una imagen y describe tus ediciones para transformar escenas al instante.",
   "requestFramePermissions": []
 }

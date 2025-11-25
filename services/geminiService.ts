@@ -85,3 +85,55 @@ export const fileToBase64 = (file: File): Promise<string> => {
     reader.onerror = (error) => reject(error);
   });
 };
+
+// Helper to add watermark
+export const addWatermark = async (base64Image: string): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.src = base64Image;
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        resolve(base64Image);
+        return;
+      }
+      
+      // Draw original image
+      ctx.drawImage(img, 0, 0);
+
+      // Configure Watermark
+      const text = "Nicrolabs.AI";
+      const fontSize = Math.floor(img.width * 0.08); // Responsive font size
+      ctx.font = `900 ${fontSize}px Inter, sans-serif`;
+      ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      
+      // Add text shadow/stroke for better visibility
+      ctx.strokeStyle = "rgba(0, 0, 0, 0.2)";
+      ctx.lineWidth = fontSize / 20;
+
+      // Draw Center Watermark (Diagonal)
+      ctx.save();
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate(-Math.PI / 6);
+      ctx.strokeText(text, 0, 0);
+      ctx.fillText(text, 0, 0);
+      ctx.restore();
+
+      // Draw small bottom right
+      ctx.font = `600 ${fontSize * 0.4}px Inter, sans-serif`;
+      ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
+      ctx.textAlign = "right";
+      ctx.textBaseline = "bottom";
+      ctx.fillText("Demo Mode", canvas.width - 20, canvas.height - 20);
+
+      resolve(canvas.toDataURL(img.src.startsWith('data:image/jpeg') ? 'image/jpeg' : 'image/png'));
+    };
+    img.onerror = (e) => reject(e);
+  });
+};

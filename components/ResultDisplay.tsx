@@ -9,7 +9,7 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ imageUrl }) => {
   const handleDownload = () => {
     const link = document.createElement('a');
     link.href = imageUrl;
-    link.download = `nicolabs-ai-${Date.now()}.png`;
+    link.download = `nicrolabs-ai-${Date.now()}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

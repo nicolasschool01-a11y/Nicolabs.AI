@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { LogoIcon, GoogleIcon, AppleIcon } from './Icons';
 
 interface LoginPageProps {
-  onLogin: () => void;
+  onLogin: (isGuest?: boolean) => void;
 }
 
 const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
@@ -12,8 +12,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulate login for frontend demo
-    onLogin();
+    // Simulate login for frontend demo (full access)
+    onLogin(false);
   };
 
   return (
@@ -27,7 +27,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
               <LogoIcon className="w-6 h-6 text-white" />
             </div>
             <span className="text-2xl font-bold tracking-tight text-white">
-              Nicolabs<span className="text-yellow-400">.AI</span>
+              Nicrolabs<span className="text-yellow-400">.AI</span>
             </span>
           </div>
           
@@ -50,7 +50,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
               onChange={(e) => setEmail(e.target.value)}
               className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500/50 transition-all placeholder:text-slate-600"
               placeholder="nombre@empresa.com"
-              required
+              required={!isRegistering} 
             />
           </div>
           
@@ -62,7 +62,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
               onChange={(e) => setPassword(e.target.value)}
               className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500/50 transition-all placeholder:text-slate-600"
               placeholder="••••••••"
-              required
+              required={!isRegistering}
             />
           </div>
 
@@ -74,6 +74,19 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
           </button>
         </form>
 
+        {/* Guest Access Button */}
+        <div className="mt-4">
+          <button 
+            type="button" 
+            onClick={() => onLogin(true)} 
+            className="w-full bg-slate-800/30 hover:bg-slate-800 text-slate-300 font-medium py-3 rounded-xl border border-dashed border-slate-600 hover:border-yellow-500/50 transition-all flex items-center justify-center gap-2 group"
+          >
+            <span className="text-yellow-500 group-hover:scale-110 transition-transform">⚡</span>
+            <span className="group-hover:text-white transition-colors">Probar Demo (con marca de agua)</span>
+          </button>
+          <p className="text-center text-[10px] text-slate-600 mt-2">Para eliminar la marca de agua, inicia sesión.</p>
+        </div>
+
         <div className="relative my-8">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-slate-800"></div>
@@ -84,11 +97,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <button onClick={onLogin} className="flex items-center justify-center space-x-2 bg-slate-800 hover:bg-slate-700 text-white py-3 rounded-xl border border-slate-700 transition-all">
+          <button onClick={() => onLogin(false)} className="flex items-center justify-center space-x-2 bg-slate-800 hover:bg-slate-700 text-white py-3 rounded-xl border border-slate-700 transition-all">
             <GoogleIcon className="w-5 h-5" />
             <span className="font-medium text-sm">Google</span>
           </button>
-          <button onClick={onLogin} className="flex items-center justify-center space-x-2 bg-slate-800 hover:bg-slate-700 text-white py-3 rounded-xl border border-slate-700 transition-all">
+          <button onClick={() => onLogin(false)} className="flex items-center justify-center space-x-2 bg-slate-800 hover:bg-slate-700 text-white py-3 rounded-xl border border-slate-700 transition-all">
             <AppleIcon className="w-5 h-5 mb-0.5" />
             <span className="font-medium text-sm">Apple</span>
           </button>
@@ -151,7 +164,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             Fotografía de estudio profesional al alcance de un clic.
           </h2>
           <p className="text-lg text-slate-300 leading-relaxed">
-            Elimina las costosas sesiones de fotos. Nicolabs.AI utiliza inteligencia artificial avanzada para situar tus productos en escenarios fotorrealistas de alto impacto. Ideal para gastronomía, e-commerce y moda.
+            Elimina las costosas sesiones de fotos. Nicrolabs.AI utiliza inteligencia artificial avanzada para situar tus productos en escenarios fotorrealistas de alto impacto. Ideal para gastronomía, e-commerce y moda.
           </p>
           
           <div className="mt-8 flex items-center space-x-4 text-sm text-slate-400 font-medium">

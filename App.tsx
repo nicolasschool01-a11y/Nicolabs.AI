@@ -3,7 +3,7 @@ import ImageUploader from './components/ImageUploader';
 import ResultDisplay from './components/ResultDisplay';
 import LoginPage from './components/LoginPage';
 import { WandIcon, SparklesIcon, LogoIcon } from './components/Icons';
-import { editImageWithGemini, fileToBase64 } from './services/geminiService';
+import { editImageWithGemini, fileToBase64, addWatermark } from './services/geminiService';
 import { ProcessingState, UploadedImage, StyleOptions, GeneratedImage } from './types';
 
 // --- CONFIGURATION DATA PRO ---
@@ -119,6 +119,7 @@ const PROMPT_TEMPLATES: Record<string, string[]> = {
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isGuest, setIsGuest] = useState(false);
   const [images, setImages] = useState<UploadedImage[]>([]);
   const [prompt, setPrompt] = useState('');
   
@@ -145,13 +146,14 @@ const App: React.FC = () => {
 
   // --- HANDLERS ---
 
-  const handleLogin = () => {
-    // In a real app, this would validate credentials
+  const handleLogin = (guestMode: boolean = false) => {
+    setIsGuest(guestMode);
     setIsAuthenticated(true);
   };
 
   const handleLogout = () => {
     setIsAuthenticated(false);
+    setIsGuest(false);
     setImages([]);
     setPrompt('');
     setHistory([]);
@@ -251,7 +253,13 @@ const App: React.FC = () => {
 
       console.log("Generando con prompt:", finalPrompt);
 
-      const resultUrl = await editImageWithGemini(imagesPayload, finalPrompt);
+      let resultUrl = await editImageWithGemini(imagesPayload, finalPrompt);
+      
+      // Apply Watermark if Guest
+      if (isGuest) {
+        setProcessingState(prev => ({ ...prev, statusMessage: "Aplicando marca de agua (Modo Demo)..." }));
+        resultUrl = await addWatermark(resultUrl);
+      }
       
       // Success Handling
       const newCreation: GeneratedImage = {
@@ -296,7 +304,7 @@ const App: React.FC = () => {
             </div>
             <div>
               <h1 className="text-xl font-bold tracking-tight text-white leading-none">
-                Nicolabs<span className="text-yellow-400">.AI</span>
+                Nicrolabs<span className="text-yellow-400">.AI</span>
               </h1>
               <span className="text-[10px] text-slate-400 tracking-wider font-medium uppercase block -mt-0.5">Estudio Pro</span>
             </div>
@@ -306,12 +314,26 @@ const App: React.FC = () => {
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
               <span>Gemini 2.5 Flash Activo</span>
             </div>
+            {isGuest && (
+              <button onClick={handleLogout} className="px-3 py-1 bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 rounded-full text-xs font-semibold hover:bg-yellow-500 hover:text-black transition-all">
+                Registrarse (Quitar Marca)
+              </button>
+            )}
             <button onClick={handleLogout} className="text-xs text-slate-400 hover:text-white transition-colors">
               Salir
             </button>
           </div>
         </div>
       </header>
+
+      {isGuest && (
+        <div className="bg-yellow-500/10 border-b border-yellow-500/20 text-center py-2 px-4">
+          <p className="text-xs font-medium text-yellow-300">
+            🔒 Estás en Modo Demo (Invitado). Tus imágenes tendrán una marca de agua. 
+            <button onClick={handleLogout} className="underline ml-1 font-bold hover:text-white">Inicia Sesión</button> para acceso completo.
+          </p>
+        </div>
+      )}
 
       <main className="max-w-7xl mx-auto px-4 py-8">
         
