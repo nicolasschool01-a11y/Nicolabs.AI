@@ -26,6 +26,8 @@ export interface StyleOptions {
   lighting: string;
   camera: string;
   angle: string;
+  format: string; // New field for Flyers/Covers
+  is4K?: boolean;
 }
 
 export interface AppState {

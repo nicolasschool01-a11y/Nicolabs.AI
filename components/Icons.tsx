@@ -1,8 +1,18 @@
+
 import React from 'react';
 
 export const LogoIcon = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    {/* Top Viewfinder/Prism */}
+    <path d="M12 7V5a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v2" />
+    {/* Camera Body */}
+    <rect x="2" y="7" width="20" height="13" rx="3" ry="3" />
+    {/* Lens Assembly Outer */}
+    <circle cx="12" cy="13.5" r="4.5" />
+    {/* Lens Eye/Sensor (AI Core) */}
+    <circle cx="12" cy="13.5" r="1.5" fill="currentColor" />
+    {/* Flash/Sensor Detail */}
+    <line x1="18.5" y1="10.5" x2="18.5" y2="10.5" strokeWidth="2.5" />
   </svg>
 );
 
@@ -92,5 +102,60 @@ export const CameraIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
     <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
     <circle cx="12" cy="13" r="3"/>
+  </svg>
+);
+
+export const ChevronRightIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="m9 18 6-6-6-6"/>
+  </svg>
+);
+
+export const ChevronDownIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="m6 9 6 6 6-6"/>
+  </svg>
+);
+
+export const CheckCircleIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+    <polyline points="22 4 12 14.01 9 11.01"/>
+  </svg>
+);
+
+export const HdIcon = ({ className }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M3 7h6" />
+      <path d="M9 7v10" />
+      <path d="M3 17h6" />
+      <path d="M3 12h6" />
+      <path d="M13 7v10h5c2.2 0 4-1.8 4-4v-2c0-2.2-1.8-4-4-4h-5z" />
+    </svg>
+);
+
+export const ApertureIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <circle cx="12" cy="12" r="10" />
+    <path d="m14.31 8 5.74 9.94" />
+    <path d="M9.69 8h11.48" />
+    <path d="m7.38 12 5.74-9.94" />
+    <path d="M9.69 16 3.95 6.06" />
+    <path d="M14.31 16H2.83" />
+    <path d="m16.62 12-5.74 9.94" />
+  </svg>
+);
+
+export const ShieldIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
+  </svg>
+);
+
+export const LayoutIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+    <line x1="3" x2="21" y1="9" y2="9" />
+    <line x1="9" x2="9" y1="21" y2="9" />
   </svg>
 );

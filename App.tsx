@@ -3,7 +3,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import ImageUploader from './components/ImageUploader';
 import ResultDisplay from './components/ResultDisplay';
 import LoginPage from './components/LoginPage';
-import { WandIcon, SparklesIcon, LogoIcon, ArrowLeftIcon, PinterestIcon, UploadIcon, XIcon } from './components/Icons';
+import Onboarding from './components/Onboarding';
+import { WandIcon, SparklesIcon, LogoIcon, ArrowLeftIcon, PinterestIcon, UploadIcon, XIcon, CheckCircleIcon, LayoutIcon } from './components/Icons';
 import { editImageWithGemini, fileToBase64, addWatermark } from './services/geminiService';
 import { ProcessingState, UploadedImage, StyleOptions, GeneratedImage } from './types';
 
@@ -16,6 +17,39 @@ const LOADING_MESSAGES = [
   "Renderizando texturas en resolución 8K...",
   "Aplicando corrección de color cinemática...",
   "Finalizando post-producción digital..."
+];
+
+const PRESET_FORMATS = [
+  { 
+    id: "post_square", 
+    label: "Post (1:1)", 
+    desc: "Redes Sociales",
+    prompt: "Composición cuadrada centrada, ideal para Instagram Feed." 
+  },
+  { 
+    id: "story", 
+    label: "Story (9:16)", 
+    desc: "Instagram/TikTok", 
+    prompt: "Composición vertical (Portrait 9:16). DEJA ESPACIO NEGATIVO EN LA PARTE SUPERIOR E INFERIOR para texto. El producto debe estar centrado verticalmente." 
+  },
+  { 
+    id: "flyer", 
+    label: "Flyer Promo", 
+    desc: "Volante Publicitario", 
+    prompt: "Diseño de Flyer Publicitario. Composición gráfica con espacio negativo claro para agregar titulares grandes. Fondo limpio y atractivo que guíe la vista al producto." 
+  },
+  { 
+    id: "cover", 
+    label: "Portada (16:9)", 
+    desc: "Facebook/YouTube", 
+    prompt: "Composición panorámica horizontal (16:9). El producto debe estar a la izquierda o derecha (Regla de Tercios), dejando un gran espacio negativo lateral para poner títulos y logos." 
+  },
+  { 
+    id: "thumbnail", 
+    label: "Miniatura YT", 
+    desc: "YouTube Thumb", 
+    prompt: "Estilo Miniatura de YouTube de alto impacto. Fondo contrastante, colores vibrantes, silueta del producto muy definida, espacio para texto grande." 
+  }
 ];
 
 const PRESET_STYLES = {
@@ -76,11 +110,15 @@ const PRESET_STYLES = {
     { label: "Macro (Detalle)", desc: "Primer plano extremo", value: "Lente Macro 100mm. Primerísimo primer plano, desenfoque de fondo (bokeh) cremoso y extremo, enfoque crítico en el detalle principal." },
     { label: "Retrato (50mm-85mm)", desc: "Visión natural", value: "Lente Prime de 50mm u 85mm. Compresión de perspectiva natural, desenfoque de fondo agradable, look estándar profesional." },
     { label: "Gran Angular", desc: "Espacioso", value: "Lente Gran Angular 24mm. Sensación de amplitud, líneas dinámicas, ideal para mostrar el entorno completo." },
+    { label: "Acción / GoPro", desc: "Inmersivo", value: "Lente ultra gran angular tipo cámara de acción (Fisheye). Perspectiva curva inmersiva, todo en foco, estilo deporte extremo." },
+    { label: "Cine Anamórfico", desc: "Look de película", value: "Lente Anamórfico de Cine. Destellos horizontales, bokeh ovalado, relación de aspecto cinemática, look de producción de Hollywood." },
   ],
   angle: [
     { label: "Frontal (Héroe)", desc: "A nivel de ojos", value: "Ángulo a nivel de los ojos o ligeramente contrapicado (Hero Shot). Hace que el producto se vea imponente y majestuoso." },
     { label: "Zenital (Flat Lay)", desc: "Desde arriba", value: "Vista totalmente cenital (Flat Lay) a 90 grados. Composición geométrica, ordenado, ideal para mostrar conjuntos de objetos." },
     { label: "45 Grados (Isométrico)", desc: "Clásico", value: "Ángulo de 45 grados (tres cuartos). Muestra volumen, profundidad y lados del producto simultáneamente." },
+    { label: "🚁 Vista de Dron", desc: "Aérea panorámica", value: "Vista aérea panorámica (Drone Shot). Plano general lejano desde el cielo, mostrando el producto integrado en un paisaje vasto." },
+    { label: "Contrapicado (Low Angle)", desc: "Poderoso", value: "Ángulo bajo (Low Angle Shot) mirando hacia arriba. Otorga poder y grandiosidad al objeto, haciéndolo parecer monumental." },
   ]
 };
 
@@ -121,6 +159,7 @@ const PROMPT_TEMPLATES: Record<string, string[]> = {
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isGuest, setIsGuest] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   
   // State for images
   const [images, setImages] = useState<UploadedImage[]>([]);
@@ -135,7 +174,8 @@ const App: React.FC = () => {
     vibe: '',
     lighting: '',
     camera: '',
-    angle: ''
+    angle: '',
+    format: 'post_square'
   });
   
   const [history, setHistory] = useState<GeneratedImage[]>([]);
@@ -155,6 +195,13 @@ const App: React.FC = () => {
   const handleLogin = (guestMode: boolean = false) => {
     setIsGuest(guestMode);
     setIsAuthenticated(true);
+    
+    // Check if user has seen onboarding
+    const hasSeenOnboarding = localStorage.getItem('nicrolabs_onboarding_seen');
+    if (!hasSeenOnboarding) {
+      setShowOnboarding(true);
+      localStorage.setItem('nicrolabs_onboarding_seen', 'true');
+    }
   };
 
   const handleLogout = () => {
@@ -276,6 +323,14 @@ const App: React.FC = () => {
       if (selectedStyles.camera) technicalParams.push(`Óptica: ${selectedStyles.camera}`);
       if (selectedStyles.angle) technicalParams.push(`Ángulo: ${selectedStyles.angle}`);
       
+      // FORMAT INJECTION
+      if (selectedStyles.format) {
+         const formatPrompt = PRESET_FORMATS.find(f => f.id === selectedStyles.format)?.prompt;
+         if (formatPrompt) {
+            technicalParams.push(`FORMATO Y COMPOSICIÓN: ${formatPrompt}`);
+         }
+      }
+      
       if (technicalParams.length > 0) {
         finalPrompt += `\n\nESPECIFICACIONES TÉCNICAS:\n${technicalParams.join('\n')}`;
       }
@@ -330,6 +385,8 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#0B1120] text-slate-200 selection:bg-yellow-500/30 pb-20 font-sans">
       
+      {showOnboarding && <Onboarding onClose={() => setShowOnboarding(false)} />}
+
       {/* --- HEADER --- */}
       <header className="border-b border-slate-800 bg-[#0F172A]/80 backdrop-blur-xl sticky top-0 z-50 shadow-2xl">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
@@ -350,9 +407,21 @@ const App: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center space-x-4">
+            
+            {/* FREE TRIAL BADGE */}
+            {!isGuest && (
+              <div className="hidden md:flex flex-col items-end mr-2 border-r border-slate-700 pr-4">
+                 <div className="flex items-center gap-1.5 text-xs font-bold text-white">
+                   <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
+                   Prueba Gratuita Activa
+                 </div>
+                 <span className="text-xs text-yellow-500 font-semibold tracking-wide">Quedan 7 días de regalo</span>
+              </div>
+            )}
+
             <div className="hidden md:flex items-center space-x-2 text-xs font-medium text-slate-500 bg-slate-900/50 px-3 py-1.5 rounded-full border border-slate-800">
-              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-              <span>Gemini 2.5 Flash</span>
+              <span className={`w-2 h-2 rounded-full ${isGuest ? 'bg-orange-500' : 'bg-green-500'} animate-pulse`}></span>
+              <span>{isGuest ? 'Modo Demo' : 'Gemini 2.5 Flash'}</span>
             </div>
             {isGuest ? (
               <button onClick={handleLogout} className="px-3 py-1 bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 rounded-full text-xs font-semibold hover:bg-yellow-500 hover:text-black transition-all">
@@ -469,7 +538,35 @@ const App: React.FC = () => {
                 <span className="bg-yellow-500 text-black w-5 h-5 rounded flex items-center justify-center text-xs font-bold">3</span>
                 <h3 className="text-sm font-bold text-white uppercase tracking-wider">Configuración del Estudio</h3>
               </div>
+
+               {/* New Format Section */}
+               <div className="space-y-3 mb-6">
+                <label className="text-xs font-semibold text-slate-400 ml-1 flex items-center gap-2">
+                  <LayoutIcon className="w-3 h-3 text-yellow-500" />
+                  Formato y Uso (Flyers & Portadas)
+                </label>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                  {PRESET_FORMATS.map((f) => (
+                    <button
+                      key={f.id}
+                      onClick={() => toggleStyle('format', f.id)}
+                      className={`
+                        p-2 rounded-lg text-center border transition-all flex flex-col items-center justify-center gap-1
+                        ${selectedStyles.format === f.id
+                          ? 'bg-yellow-500/20 border-yellow-500 text-yellow-200'
+                          : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-600 hover:text-slate-200'
+                        }
+                      `}
+                    >
+                      <span className="text-[10px] font-bold uppercase">{f.label}</span>
+                      <span className="text-[9px] opacity-60 leading-none">{f.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
               
+              <div className="h-px bg-slate-800 w-full mb-6"></div>
+
               {/* Business Type Grid */}
               <div className="space-y-3">
                 <label className="text-xs font-semibold text-slate-400 ml-1">Contexto del Negocio</label>
@@ -586,6 +683,21 @@ const App: React.FC = () => {
               </div>
               
               <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
+                
+                {/* EDUCATIONAL BLOCK */}
+                <div className="mb-4 bg-slate-800/40 p-3 rounded-lg border border-slate-700/50">
+                  <p className="text-xs text-slate-300 font-medium mb-1 flex items-center gap-1">
+                    <SparklesIcon className="w-3 h-3 text-yellow-400" />
+                    ¿Qué debo escribir aquí?
+                  </p>
+                  <p className="text-[11px] text-slate-400 leading-snug">
+                    Imagina que le dices al fotógrafo dónde poner tu producto. Escribe el escenario: 
+                    <br />
+                    <em className="text-slate-500">"En una mesa de desayuno junto a una ventana", "Flotando en el espacio", "Sobre una roca en un río". </em>
+                    ¡Nosotros ponemos la cámara y la luz!
+                  </p>
+                </div>
+
                 {/* Smart Templates */}
                 {selectedBusinessId && currentTemplates && (
                   <div className="mb-4">
@@ -612,7 +724,7 @@ const App: React.FC = () => {
                   <textarea
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
-                    placeholder={selectedBusinessId ? "Selecciona una idea o escribe la tuya..." : "Describe el escenario perfecto..."}
+                    placeholder="Ej: 'Mi producto está sobre una mesa de mármol blanco, con luz de atardecer entrando por la ventana y un florero desenfocado atrás'..."
                     className="w-full h-28 bg-black/30 border border-slate-700 rounded-lg p-4 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500/50 transition-all resize-none"
                   />
                   <div className="absolute bottom-3 right-3 text-[10px] text-slate-600 font-mono">
