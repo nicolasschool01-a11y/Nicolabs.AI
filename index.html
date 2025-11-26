@@ -48,6 +48,53 @@
       .animate-ticker:hover {
         animation-play-state: paused;
       }
+
+      /* --- NEW PREMIUM ANIMATIONS --- */
+
+      /* Gradient Flow for Buttons */
+      @keyframes gradient-x {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+      }
+      .animate-gradient-x {
+        background-size: 200% 200%;
+        animation: gradient-x 3s ease infinite;
+      }
+
+      /* Floating effect for Hero elements */
+      @keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+      }
+      .animate-float {
+        animation: float 6s ease-in-out infinite;
+      }
+      .animate-float-delayed {
+        animation: float 6s ease-in-out 3s infinite;
+      }
+
+      /* Laser Scan Effect for Loading */
+      @keyframes scan {
+        0% { top: 0%; opacity: 0; }
+        10% { opacity: 1; }
+        90% { opacity: 1; }
+        100% { top: 100%; opacity: 0; }
+      }
+      .animate-scan {
+        animation: scan 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+      }
+
+      /* Shimmer Effect for Placeholders */
+      @keyframes shimmer {
+        0% { background-position: -1000px 0; }
+        100% { background-position: 1000px 0; }
+      }
+      .animate-shimmer {
+        animation: shimmer 2s linear infinite;
+        background: linear-gradient(to right, #1e293b 8%, #334155 18%, #1e293b 33%);
+        background-size: 1000px 100%;
+      }
       
       /* Utilities */
       .scrollbar-hide::-webkit-scrollbar {
@@ -58,10 +105,10 @@
           scrollbar-width: none;
       }
       
-      /* Custom Animation Utilities */
       .delay-100 { animation-delay: 100ms; }
       .delay-200 { animation-delay: 200ms; }
       .delay-300 { animation-delay: 300ms; }
+      .delay-500 { animation-delay: 500ms; }
     </style>
   <script type="importmap">
 {

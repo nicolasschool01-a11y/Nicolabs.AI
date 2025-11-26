@@ -67,6 +67,18 @@ const FORMAT_MAP: Record<string, string> = {
 const PRESET_STYLES = {
   business: [
     { 
+      id: "automotive",
+      label: "🚗 Automotriz / Autos", 
+      desc: "Concesionarios y Venta. Showroom y exteriores.",
+      value: "Fotografía publicitaria de automóviles de alta gama (Car Commercial Photography). Iluminación 'Car Studio' que resalta las líneas de la carrocería (Rim Light), manejo perfecto de reflejos sobre la pintura y vidrios, neumáticos con brillo, aspecto limpio y premium." 
+    },
+    { 
+      id: "personal_brand",
+      label: "📸 Marca Personal / Influencer", 
+      desc: "Retratos y lifestyle. Eleva tu imagen en redes sociales.",
+      value: "Fotografía de estilo de vida profesional para marca personal (Influencer Style). Iluminación favorecedora (Butterfly o Rembrandt), fondo desenfocado estéticamente (Bokeh), look natural pero pulido, alta resolución, ideal para Instagram/LinkedIn. Piel con textura real." 
+    },
+    { 
       id: "gastro",
       label: "🍔 Gastronomía Gourmet", 
       desc: "Platillos, postres y bebidas. Enfoque en texturas deliciosas.",
@@ -136,6 +148,17 @@ const PRESET_STYLES = {
 
 // Smart Templates based on Business Category
 const PROMPT_TEMPLATES: Record<string, string[]> = {
+  "automotive": [
+    "En un showroom de lujo minimalista, piso de cerámica blanca y luces lineales de techo.",
+    "Conduciendo por una carretera costera al atardecer (Golden Hour) con desenfoque de movimiento (Motion Blur).",
+    "Estacionado frente a una arquitectura moderna de hormigón y vidrio (Cityscape), estilo agresivo.",
+    "Toma nocturna en ciudad con luces de neón reflejadas en la carrocería (estilo Cyberpunk)."
+  ],
+  "personal_brand": [
+    "Retrato corporativo moderno en una oficina de cristal, luz suave, traje elegante.",
+    "Estilo casual urbano caminando por una calle de Nueva York desenfocada.",
+    "Trabajando con un laptop en una cafetería estética (Coffee Shop), luz cálida y natural."
+  ],
   "gastro": [
     "Sobre una mesa de madera rústica envejecida en una terraza italiana.",
     "Flotando dinámicamente con ingredientes frescos volando alrededor (splash).",
@@ -257,7 +280,17 @@ const App: React.FC = () => {
 
   const selectBusiness = (id: string, value: string) => {
     setSelectedBusinessId(id === selectedBusinessId ? '' : id);
-    setSelectedStyles(prev => ({ ...prev, business: id === selectedBusinessId ? '' : value }));
+    const newBusinessVal = id === selectedBusinessId ? '' : value;
+    
+    // AUTO-ENABLE 4K FOR AUTOMOTIVE
+    // Cars require high fidelity for paint reflections, so we force Pro model
+    const shouldBe4K = id === 'automotive';
+
+    setSelectedStyles(prev => ({ 
+      ...prev, 
+      business: newBusinessVal,
+      is4K: shouldBe4K ? true : prev.is4K // Auto-enable 4K for cars
+    }));
   };
 
   const toggleStyle = (category: keyof StyleOptions, value: any) => {
@@ -406,6 +439,18 @@ const App: React.FC = () => {
         // 3. USER SCENE INSTRUCTION
         finalPrompt += `\n\nDESCRIPCIÓN DE LA ESCENA: "${prompt}"`;
 
+        // AUTOMOTIVE SPECIFIC LOGIC
+        if (selectedBusinessId === 'automotive') {
+          finalPrompt += `\n\nMOTOR DE RENDERIZADO AUTOMOTRIZ (CAR PAINT PHYSICS):\n`;
+          finalPrompt += `- Pintura: Renderizar con reflejos Fresnel realistas basados en el entorno HDRI sugerido.\n`;
+          finalPrompt += `- Cristales: Transparencia correcta con reflejos del cielo/techo.\n`;
+          finalPrompt += `- Neumáticos: Acabado negro satinado (tire dressing), no gris mate.\n`;
+          finalPrompt += `- Suelo: Sombra de contacto dura (Ambient Occlusion) debajo del chasis para evitar efecto "flotante".\n`;
+          if (styleReference) {
+             finalPrompt += `- INTEGRACIÓN DE ENTORNO: El vehículo debe reflejar en su carrocería los colores y luces de la Imagen de Referencia (Input 2).`;
+          }
+        }
+
         // 4. TECHNICAL SPECS
         const technicalParams = [];
         if (selectedStyles.vibe) technicalParams.push(`Estilo Visual: ${selectedStyles.vibe}`);
@@ -514,14 +559,14 @@ const App: React.FC = () => {
                 <ArrowLeftIcon className="w-5 h-5" />
               </button>
             )}
-            <div className="bg-gradient-to-br from-yellow-400 to-orange-600 p-2 rounded-lg shadow-lg shadow-orange-500/20">
+            <div className="bg-gradient-to-br from-yellow-400 to-orange-600 p-2 rounded-lg shadow-lg shadow-orange-500/20 hover:scale-105 transition-transform duration-300">
               <LogoIcon className="w-5 h-5 text-white" />
             </div>
             <div>
               <h1 className="text-xl font-bold tracking-tight text-white leading-none">
                 Nicrolabs<span className="text-yellow-400">.AI</span>
               </h1>
-              <span className="text--[10px] text-slate-400 tracking-wider font-medium uppercase block -mt-0.5">Studio v2.5</span>
+              <span className="text-[10px] text-slate-400 tracking-wider font-medium uppercase block -mt-0.5">Studio v2.5</span>
             </div>
           </div>
           <div className="flex items-center space-x-4">
@@ -531,7 +576,7 @@ const App: React.FC = () => {
               className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-colors relative"
             >
               <GridIcon className="w-5 h-5" />
-              {history.length > 0 && <span className="absolute top-1 right-1 w-2 h-2 bg-yellow-500 rounded-full"></span>}
+              {history.length > 0 && <span className="absolute top-1 right-1 w-2 h-2 bg-yellow-500 rounded-full animate-bounce"></span>}
             </button>
 
             {/* FREE TRIAL BADGE */}
@@ -576,7 +621,7 @@ const App: React.FC = () => {
       <main className="max-w-7xl mx-auto px-4 py-8">
         
         {/* Onboarding Intro */}
-        <div className="mb-8 p-6 bg-slate-800/30 rounded-2xl border border-slate-700/50 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="mb-8 p-6 bg-slate-800/30 rounded-2xl border border-slate-700/50 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
            <div>
              <h2 className="text-lg font-bold text-white mb-1">Crea fotos de producto que vendan</h2>
              <p className="text-sm text-slate-400">
@@ -595,7 +640,7 @@ const App: React.FC = () => {
         <div className="grid lg:grid-cols-12 gap-8 items-start">
           
           {/* --- LEFT COLUMN: CONTROLS (7/12) --- */}
-          <div className="lg:col-span-7 space-y-8">
+          <div className="lg:col-span-7 space-y-8 animate-in slide-in-from-left duration-700 delay-100">
             
             {/* 1. PRODUCT UPLOADER & MODE SELECTOR */}
             <section className="space-y-4">
@@ -620,7 +665,7 @@ const App: React.FC = () => {
               </div>
 
               {selectedStyles.isFaceSwap ? (
-                 <div className="bg-yellow-500/10 border border-yellow-500/20 p-4 rounded-xl flex items-start gap-3">
+                 <div className="bg-yellow-500/10 border border-yellow-500/20 p-4 rounded-xl flex items-start gap-3 animate-in fade-in">
                     <FaceIcon className="w-6 h-6 text-yellow-500 mt-1" />
                     <div>
                       <h4 className="text-sm font-bold text-white">Modo Intercambio de Rostro Activado</h4>
@@ -658,7 +703,7 @@ const App: React.FC = () => {
                 <span className="text-xs text-slate-500">Opcional</span>
               </div>
               
-              <div className="p-5 bg-slate-900/50 rounded-xl border border-slate-800 relative group">
+              <div className="p-5 bg-slate-900/50 rounded-xl border border-slate-800 relative group transition-all hover:border-slate-600">
                 <div className="flex flex-col md:flex-row gap-4 items-center">
                    <div className="flex-1">
                       <h4 className="text-xs font-bold text-slate-300 mb-1 flex items-center gap-2">
@@ -699,7 +744,7 @@ const App: React.FC = () => {
                       ) : (
                         <button 
                           onClick={() => styleInputRef.current?.click()}
-                          className="w-full aspect-video border-2 border-dashed border-slate-700 hover:border-slate-500 rounded-lg text-slate-400 hover:text-white transition-all flex flex-col items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800"
+                          className="w-full aspect-video border-2 border-dashed border-slate-700 hover:border-slate-500 rounded-lg text-slate-400 hover:text-white transition-all flex flex-col items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 hover:-translate-y-1"
                         >
                           <ImageIcon className="w-6 h-6 text-slate-600 group-hover:text-slate-400" />
                           <span className="text-[10px] font-bold uppercase tracking-wide">Cargar Moodboard</span>
@@ -712,7 +757,7 @@ const App: React.FC = () => {
             )}
 
             {/* 3. STYLE SELECTOR */}
-            <section className="space-y-6 bg-slate-900/50 p-6 rounded-2xl border border-slate-800">
+            <section className="space-y-6 bg-slate-900/50 p-6 rounded-2xl border border-slate-800 hover:shadow-lg transition-shadow">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <span className="bg-yellow-500 text-black w-5 h-5 rounded flex items-center justify-center text-xs font-bold">3</span>
@@ -724,7 +769,7 @@ const App: React.FC = () => {
                 {!selectedStyles.isFaceSwap && (
                   <button 
                     onClick={() => setShowStyleAssistant(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full text-[10px] font-bold shadow-lg shadow-indigo-500/20 transition-all border border-indigo-400/30"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full text-[10px] font-bold shadow-lg shadow-indigo-500/20 transition-all border border-indigo-400/30 hover:scale-105"
                   >
                     <BotIcon className="w-3 h-3" />
                     <span>Auto-Configurar con IA</span>
@@ -746,7 +791,7 @@ const App: React.FC = () => {
                       className={`
                         p-2 rounded-lg text-center border transition-all flex flex-col items-center justify-center gap-1
                         ${selectedStyles.format === f.id
-                          ? 'bg-yellow-500/20 border-yellow-500 text-yellow-200'
+                          ? 'bg-yellow-500/20 border-yellow-500 text-yellow-200 shadow-md transform scale-105'
                           : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-600 hover:text-slate-200'
                         }
                       `}
@@ -772,7 +817,7 @@ const App: React.FC = () => {
                         key={s.id}
                         onClick={() => selectBusiness(s.id, s.value)}
                         className={`
-                          relative group p-4 rounded-xl text-left border transition-all duration-200
+                          relative group p-4 rounded-xl text-left border transition-all duration-200 hover:translate-x-1
                           ${selectedBusinessId === s.id
                             ? 'bg-yellow-500/10 border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.1)]'
                             : 'bg-slate-800 border-slate-700 hover:border-slate-500 hover:bg-slate-750'
@@ -781,7 +826,7 @@ const App: React.FC = () => {
                       >
                         <div className="flex justify-between items-start mb-1">
                           <span className="font-bold text-sm text-slate-100">{s.label}</span>
-                          {selectedBusinessId === s.id && <span className="text-yellow-400 text-xs">●</span>}
+                          {selectedBusinessId === s.id && <span className="text-yellow-400 text-xs animate-pulse">●</span>}
                         </div>
                         <p className="text-[11px] text-slate-400 leading-tight group-hover:text-slate-300 transition-colors">
                           {s.desc}
@@ -985,10 +1030,10 @@ const App: React.FC = () => {
                     onClick={handleGenerate}
                     disabled={images.length === 0 || !prompt || processingState.isLoading}
                     className={`
-                      w-full py-4 rounded-xl font-bold text-base shadow-xl flex items-center justify-center space-x-2 transition-all duration-300
+                      w-full py-4 rounded-xl font-bold text-base shadow-xl flex items-center justify-center space-x-2 transition-all duration-300 relative overflow-hidden group
                       ${(images.length === 0 || !prompt || processingState.isLoading)
                         ? 'bg-slate-800 border border-slate-700 text-slate-500 cursor-not-allowed opacity-50'
-                        : 'bg-gradient-to-r from-yellow-400 via-yellow-500 to-orange-500 text-slate-900 hover:shadow-orange-500/30 hover:-translate-y-0.5'
+                        : 'bg-gradient-to-r from-yellow-400 via-yellow-500 to-orange-500 text-slate-900 hover:shadow-orange-500/30 hover:-translate-y-0.5 animate-gradient-x'
                       }
                     `}
                   >
@@ -1000,14 +1045,14 @@ const App: React.FC = () => {
                     ) : (
                       <>
                         {selectedStyles.isFaceSwap ? <RefreshIcon className="w-5 h-5" /> : <WandIcon className="w-5 h-5" />}
-                        <span>
+                        <span className="relative z-10">
                            {selectedStyles.isFaceSwap ? "Intercambiar Rostro" : "Generar Fotografía Pro"}
                         </span>
                       </>
                     )}
                   </button>
                   {processingState.error && (
-                    <div className="mt-3 text-xs text-red-400 text-center bg-red-900/10 p-2 rounded border border-red-900/30">
+                    <div className="mt-3 text-xs text-red-400 text-center bg-red-900/10 p-2 rounded border border-red-900/30 animate-pulse">
                       ⚠️ {processingState.error}
                     </div>
                   )}
@@ -1017,16 +1062,25 @@ const App: React.FC = () => {
           </div>
 
           {/* --- RIGHT COLUMN: RESULT (5/12) --- */}
-          <div className="lg:col-span-5 space-y-6">
+          <div className="lg:col-span-5 space-y-6 animate-in slide-in-from-right duration-700 delay-200">
             
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden sticky top-24 min-h-[500px] flex flex-col shadow-2xl ring-1 ring-white/5">
-              <div className="p-4 border-b border-slate-800 bg-slate-800/30 flex justify-between items-center backdrop-blur-sm">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden sticky top-24 min-h-[500px] flex flex-col shadow-2xl ring-1 ring-white/5 relative">
+              
+              {/* SCANNER LOADING EFFECT */}
+              {processingState.isLoading && (
+                 <div className="absolute inset-0 z-20 pointer-events-none">
+                    <div className="w-full h-1 bg-yellow-500/80 shadow-[0_0_20px_rgba(234,179,8,0.8)] animate-scan"></div>
+                    <div className="absolute inset-0 bg-yellow-500/5 mix-blend-overlay"></div>
+                 </div>
+              )}
+
+              <div className="p-4 border-b border-slate-800 bg-slate-800/30 flex justify-between items-center backdrop-blur-sm z-30">
                  <h3 className="font-bold text-white flex items-center space-x-2 text-sm">
                   <span className="bg-yellow-500 text-black w-5 h-5 rounded flex items-center justify-center text-xs">5</span>
                   <span>Resultado Final</span>
                 </h3>
                 {currentImage && (
-                    <span className="px-2 py-0.5 bg-green-500/10 text-green-400 border border-green-500/20 rounded text-[10px] font-mono">RENDER 8K</span>
+                    <span className="px-2 py-0.5 bg-green-500/10 text-green-400 border border-green-500/20 rounded text-[10px] font-mono animate-pulse">RENDER 8K</span>
                 )}
               </div>
 
@@ -1036,7 +1090,7 @@ const App: React.FC = () => {
                     <ResultDisplay imageUrl={currentImage.imageUrl} />
                   </div>
                 ) : (
-                  <div className="text-center p-8 opacity-30 flex flex-col items-center">
+                  <div className={`text-center p-8 flex flex-col items-center ${processingState.isLoading ? 'opacity-50 animate-pulse' : 'opacity-30'}`}>
                     <div className="w-20 h-20 rounded-full bg-slate-800 flex items-center justify-center mb-4">
                         <SparklesIcon className="w-8 h-8 text-slate-400" />
                     </div>
@@ -1048,7 +1102,7 @@ const App: React.FC = () => {
 
               {/* Session History Strip */}
               {history.length > 0 && (
-                <div className="p-4 bg-slate-900/90 border-t border-slate-800 backdrop-blur">
+                <div className="p-4 bg-slate-900/90 border-t border-slate-800 backdrop-blur z-30">
                   <div className="flex justify-between items-end mb-2">
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tus Tomas Recientes</p>
                     <span className="text-[10px] text-slate-600">{history.length}</span>
@@ -1060,7 +1114,7 @@ const App: React.FC = () => {
                         onClick={() => setCurrentImage(item)}
                         className={`relative w-20 h-20 rounded-lg overflow-hidden border-2 flex-shrink-0 transition-all snap-start ${
                           currentImage?.id === item.id 
-                          ? 'border-yellow-500 ring-2 ring-yellow-500/20 scale-105 z-10' 
+                          ? 'border-yellow-500 ring-2 ring-yellow-500/20 scale-105 z-10 shadow-lg' 
                           : 'border-slate-700 hover:border-slate-500 grayscale hover:grayscale-0 opacity-70 hover:opacity-100'
                         }`}
                       >
@@ -1073,7 +1127,7 @@ const App: React.FC = () => {
             </div>
 
             {/* Pro Tips with Rotation */}
-            <div className="bg-slate-900/50 p-5 rounded-xl border border-slate-800/50 backdrop-blur-sm">
+            <div className="bg-slate-900/50 p-5 rounded-xl border border-slate-800/50 backdrop-blur-sm animate-in slide-in-from-bottom duration-700 delay-300">
                 <h4 className="text-yellow-500 font-bold text-xs uppercase mb-2 flex items-center">
                     <SparklesIcon className="w-3 h-3 mr-1" />
                     Consejos de Experto
