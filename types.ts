@@ -28,6 +28,7 @@ export interface StyleOptions {
   angle: string;
   format: string; // New field for Flyers/Covers
   is4K?: boolean;
+  isFaceSwap?: boolean; // New mode for Face Swapping
 }
 
 export interface AppState {

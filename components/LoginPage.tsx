@@ -13,20 +13,20 @@ const FAQS = [
     answer: "Te registras hoy y obtienes acceso total a todas las funciones PRO (Cámaras 8K, Estilos Premium, Sin Marca de Agua). Si no te convence, puedes cancelar en cualquier momento antes de los 7 días y no se te cobrará nada."
   },
   {
-    question: "Tengo una ferretería o farmacia con productos 'aburridos', ¿me sirve?",
-    answer: "¡Es donde más brillamos! Nicrolabs convierte un simple tornillo, una caja de remedios o un repuesto industrial en una imagen de catálogo premium. Elevamos el valor percibido de cualquier objeto físico al instante."
+    question: "¿Sirve para mis fotos personales de Instagram/Tinder?",
+    answer: "¡Absolutamente! Nicrolabs no es solo para productos. Usa el modo 'Intercambio de Rostro' o mejora tus selfies para tener fotos con iluminación de estudio, pareciendo que contrataste a un fotógrafo profesional por una fracción del costo."
+  },
+  {
+    question: "Tengo un negocio tradicional (Farmacia, Ferretería, Market), ¿me sirve?",
+    answer: "Es nuestra especialidad. Sabemos que tomar fotos a productos cotidianos (como una caja de medicina o una herramienta) y que se vean 'sexy' es difícil. Nicrolabs lo hace automático, elevando tu catálogo al nivel de grandes marcas."
   },
   {
     question: "¿Necesito cámara profesional o saber de iluminación?",
-    answer: "Absolutamente no. La IA actúa como tu Director de Arte, Iluminador y Fotógrafo. Tú solo tomas la foto con tu celular (incluso con mala luz) y Nicrolabs reconstruye la escena con iluminación de estudio perfecta."
+    answer: "No. La IA actúa como tu Director de Arte. Tú solo tomas la foto con tu celular (incluso con mala luz) y Nicrolabs reconstruye la escena con calidad de agencia."
   },
   {
-    question: "¿Las fotos se ven reales o parecen 'generadas por robot'?",
-    answer: "Usamos el motor Gemini 2.5 calibrado ópticamente. Mantenemos la textura real de tu producto (etiquetas, materiales, logos) mientras generamos un entorno fotorrealista. Tus clientes no notarán la diferencia con una foto real."
-  },
-  {
-    question: "¿Puedo usar las imágenes para publicidad (Ads)?",
-    answer: "Totalmente. Las imágenes generadas son libres de derechos de autor y tuyas para usar en Facebook Ads, Instagram, Catálogos impresos o tu tienda Shopify/MercadoLibre en alta resolución."
+    question: "¿Las fotos son libres de derechos?",
+    answer: "Totalmente. Las imágenes generadas son tuyas para usar en publicidad, redes sociales, catálogos o donde quieras sin restricciones."
   }
 ];
 
@@ -68,15 +68,15 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
       <div className="flex flex-col lg:flex-row min-h-screen">
         
         {/* --- MOBILE HERO (Visible only on Mobile) --- */}
-        <div className="lg:hidden relative h-[50vh] w-full overflow-hidden">
+        <div className="lg:hidden relative h-[55vh] w-full overflow-hidden">
           <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 gap-0.5 opacity-90">
               <img src="https://images.unsplash.com/photo-1581235720704-06d3acfcb36f?auto=format&fit=crop&w=400&q=80" className="w-full h-full object-cover" alt="Ferretería/Herramientas" />
-              <img src="https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&w=400&q=80" className="w-full h-full object-cover" alt="Cosmética/Farmacia" />
-              <img src="https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=400&q=80" className="w-full h-full object-cover" alt="Ecommerce" />
-              <img src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=400&q=80" className="w-full h-full object-cover" alt="Moda" />
+              <img src="https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&w=400&q=80" className="w-full h-full object-cover" alt="Farmacia/Cosmética" />
+              <img src="https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=400&q=80" className="w-full h-full object-cover" alt="Ecommerce General" />
+              <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80" className="w-full h-full object-cover" alt="Retrato Profesional" />
           </div>
           
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0B1120] via-[#0B1120]/60 to-transparent"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0B1120] via-[#0B1120]/70 to-transparent"></div>
           
           <div className="absolute bottom-0 left-0 w-full p-6 pb-8 z-10">
             <div className="inline-flex items-center space-x-1 bg-yellow-500/20 backdrop-blur-md border border-yellow-500/30 rounded-full px-3 py-1 mb-3">
@@ -84,10 +84,13 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 <span className="text-yellow-300 text-[10px] font-bold uppercase tracking-wider">Prueba 7 días Gratis</span>
             </div>
             <h1 className="text-3xl font-extrabold text-white leading-tight mb-2">
-              Fotos que venden solas. <br/>Sin estudio.
+              Fotografía profesional <br/>al alcance de todos.
             </h1>
-            <p className="text-sm text-slate-300 leading-relaxed">
-              La solución ideal para pequeños negocios y personas que quieren elevar su presencia en redes con produccion de fotografias de estudio con una interfaz sencilla y rapida y amigable.
+            <p className="text-sm text-slate-300 leading-relaxed mb-1">
+              <strong>Farmacias, Ferreterías, E-commerce y Marcas Personales.</strong>
+            </p>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Transformamos tus productos cotidianos en imágenes de catálogo premium en segundos. Vende más con mejor imagen.
             </p>
           </div>
         </div>
@@ -110,7 +113,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             </h2>
             <p className="text-slate-400 text-sm text-center lg:text-left leading-relaxed">
               {isRegistering 
-                ? "Disfruta de 7 días de acceso completo. Sin cargos hasta que termine la prueba." 
+                ? "Calidad de estudio profesional para tu negocio. 7 días gratis." 
                 : "Tu estudio virtual está listo. Continúa creando."}
             </p>
           </div>
@@ -132,13 +135,13 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1 ml-1">Email Profesional</label>
+              <label className="block text-xs font-semibold text-slate-400 mb-1 ml-1">Email</label>
               <input 
                 type="email" 
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500/50 transition-all placeholder:text-slate-600 text-sm"
-                placeholder="nombre@empresa.com"
+                placeholder="tu@negocio.com"
                 required={!isRegistering} 
               />
             </div>
@@ -165,7 +168,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
           {isRegistering && (
              <div className="mt-4 flex items-center justify-center space-x-4 text-[10px] text-slate-500">
-               <span className="flex items-center gap-1"><CheckCircleIcon className="w-3 h-3 text-green-500" /> Sin cobros hoy</span>
+               <span className="flex items-center gap-1"><CheckCircleIcon className="w-3 h-3 text-green-500" /> Sin tarjeta requerida</span>
                <span className="flex items-center gap-1"><CheckCircleIcon className="w-3 h-3 text-green-500" /> Cancela cuando quieras</span>
              </div>
           )}
@@ -221,7 +224,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
           <div className="absolute inset-0 grid grid-cols-2 gap-4 p-8 opacity-90 transition-all duration-1000">
             <div className="space-y-4 pt-12 animate-[slideUp_45s_linear_infinite]">
                 <img src="https://images.unsplash.com/photo-1581235720704-06d3acfcb36f?auto=format&fit=crop&w=1200&q=95" className="w-full h-80 object-cover rounded-2xl shadow-2xl brightness-110" alt="Ferretería Pro" />
-                <img src="https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=1200&q=95" className="w-full h-72 object-cover rounded-2xl shadow-2xl brightness-110" alt="Shoes Pro" />
+                <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1200&q=95" className="w-full h-72 object-cover rounded-2xl shadow-2xl brightness-110" alt="Personal Portrait Pro" />
                 <img src="https://images.unsplash.com/photo-1550009158-9ebf69173e03?auto=format&fit=crop&w=1200&q=95" className="w-full h-72 object-cover rounded-2xl shadow-2xl brightness-110" alt="Tech Pro" />
                 <img src="https://images.unsplash.com/photo-1616486338812-3dadae4b4f9d?auto=format&fit=crop&w=1200&q=95" className="w-full h-72 object-cover rounded-2xl shadow-2xl brightness-110" alt="Drinks Pro" />
             </div>
@@ -229,7 +232,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 <img src="https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&w=1200&q=95" className="w-full h-72 object-cover rounded-2xl shadow-2xl brightness-110" alt="Cosmetic Pro" />
                 <img src="https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=1200&q=95" className="w-full h-96 object-cover rounded-2xl shadow-2xl brightness-110" alt="Food Pro" />
                 <img src="https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&w=1200&q=95" className="w-full h-72 object-cover rounded-2xl shadow-2xl brightness-110" alt="Furniture Pro" />
-                 <img src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=1200&q=95" className="w-full h-72 object-cover rounded-2xl shadow-2xl brightness-110" alt="Watches Pro" />
+                 <img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=1200&q=95" className="w-full h-72 object-cover rounded-2xl shadow-2xl brightness-110" alt="Model Pro" />
             </div>
           </div>
 
@@ -245,24 +248,24 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             </div>
             
             <h2 className="text-6xl font-extrabold text-white leading-[1.05] mb-6 drop-shadow-2xl">
-              Transforma fotos de celular en <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500">imanes de ventas.</span>
+              Tus fotos, con calidad<br/>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500">de Estudio Profesional.</span>
             </h2>
             
             <div className="space-y-4 mb-8">
               <p className="text-xl text-slate-100 font-normal leading-relaxed drop-shadow-md">
-                ¿Tienes una <strong className="text-white border-b-2 border-yellow-500/50">Ferretería</strong>, una <strong className="text-white border-b-2 border-yellow-500/50">Farmacia</strong> o vendes <strong className="text-white border-b-2 border-yellow-500/50">Comida</strong>?
-                Deja de subir fotos oscuras que ignoran tus clientes.
+                Unificamos la calidad visual para todos: <strong className="text-white border-b-2 border-yellow-500/50">Farmacias, Ferreterías, E-commerce</strong> y Marcas Personales.
               </p>
               <p className="text-lg text-slate-200 font-light leading-relaxed drop-shadow-md">
-                Nicrolabs.AI analiza tu producto y lo transporta digitalmente a un estudio de $10,000 USD. <br/>
-                <span className="text-yellow-400 font-medium">Resultado inmediato. Costo casi cero.</span>
+                No importa si vendes un cosmético, un martillo o ropa. Nicrolabs eleva cualquier producto cotidiano a un objeto de deseo premium.
+                <br/><span className="text-yellow-400 font-medium">Resultados increíbles. Fácil y rápido.</span>
               </p>
             </div>
             
             <div className="flex items-center space-x-8 bg-[#0B1120]/80 p-6 rounded-2xl backdrop-blur-md border border-slate-700/50 inline-flex">
               <div className="flex flex-col">
                   <span className="text-3xl font-bold text-white">10x</span>
-                  <span className="text-xs text-slate-400 uppercase font-bold tracking-wide">Más ventas</span>
+                  <span className="text-xs text-slate-400 uppercase font-bold tracking-wide">Más Ventas</span>
               </div>
               <div className="w-px h-10 bg-slate-600"></div>
               <div className="flex flex-col">
@@ -272,7 +275,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
               <div className="w-px h-10 bg-slate-600"></div>
               <div className="flex flex-col">
                   <span className="text-3xl font-bold text-white">Top 1%</span>
-                  <span className="text-xs text-slate-400 uppercase font-bold tracking-wide">Calidad Visual</span>
+                  <span className="text-xs text-slate-400 uppercase font-bold tracking-wide">Imagen de Marca</span>
               </div>
             </div>
           </div>
@@ -296,7 +299,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
               </div>
               <h3 className="text-xl font-bold text-white mb-3">1. Sube tu Foto</h3>
               <p className="text-slate-400 text-sm leading-relaxed">
-                Toma una foto con tu celular. No importa si el fondo es tu mesa de cocina o el piso del local. La IA extraerá el producto.
+                Toma una foto con tu celular. Ya sea un repuesto de auto, una crema o una selfie. La IA identificará el sujeto principal.
               </p>
             </div>
 
@@ -307,7 +310,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
               </div>
               <h3 className="text-xl font-bold text-white mb-3">2. Elige el Estilo</h3>
               <p className="text-slate-400 text-sm leading-relaxed">
-                Selecciona tu rubro (Gastronomía, Ferretería, Moda, etc.) y la atmósfera deseada. ¿Quieres lujo minimalista o industrial rústico?
+                Selecciona tu rubro (Farmacia, Herramientas, Moda) o sube una referencia. Nicrolabs adapta la luz al producto.
               </p>
             </div>
 
@@ -318,7 +321,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
               </div>
               <h3 className="text-xl font-bold text-white mb-3">3. Genera Magia</h3>
               <p className="text-slate-400 text-sm leading-relaxed">
-                En segundos, nuestro motor Gemini 2.5 analiza la luz y geometría para integrar tu producto en un escenario 8K fotorrealista.
+                En segundos, obtén una imagen 8K fotorrealista. Perfecta para publicidad, Instagram, Tinder o tu tienda online.
               </p>
             </div>
           </div>
@@ -328,34 +331,34 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
              <div className="absolute top-0 right-0 w-64 h-64 bg-yellow-500/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
              <div className="relative z-10 grid md:grid-cols-2 gap-10 items-center">
                 <div>
-                   <h3 className="text-2xl font-bold text-white mb-4">Alcance Profesional Ilimitado</h3>
+                   <h3 className="text-2xl font-bold text-white mb-4">Unificamos la Calidad Visual para TODOS</h3>
                    <p className="text-slate-300 mb-6 leading-relaxed">
-                     Nicrolabs democratiza la fotografía de alto nivel. Ya no necesitas alquilar estudios, comprar luces softbox ni aprender Photoshop complejo.
+                     Nicrolabs democratiza la fotografía de alto nivel. Está diseñado para que <strong>cualquier negocio</strong> pueda competir visualmente con las grandes marcas.
                    </p>
                    <ul className="space-y-3">
                      <li className="flex items-start gap-3">
                        <div className="bg-green-500/20 p-1 rounded text-green-400"><ChevronRightIcon className="w-4 h-4" /></div>
-                       <span className="text-sm text-slate-300"><strong>E-commerce:</strong> Sube tus ventas en MercadoLibre y Shopify con fotos limpias.</span>
+                       <span className="text-sm text-slate-300"><strong>Comercio Local y Online:</strong> Farmacias, Ferreterías, Minimarkets, Repuestos. Convierte productos "aburridos" en estrellas.</span>
                      </li>
                      <li className="flex items-start gap-3">
                        <div className="bg-green-500/20 p-1 rounded text-green-400"><ChevronRightIcon className="w-4 h-4" /></div>
-                       <span className="text-sm text-slate-300"><strong>Redes Sociales:</strong> Crea contenido viral para Instagram y TikTok sin salir de casa.</span>
+                       <span className="text-sm text-slate-300"><strong>Marcas Personales:</strong> Selfies profesionales, LinkedIn, Tinder o Instagram aesthetic.</span>
                      </li>
                      <li className="flex items-start gap-3">
                        <div className="bg-green-500/20 p-1 rounded text-green-400"><ChevronRightIcon className="w-4 h-4" /></div>
-                       <span className="text-sm text-slate-300"><strong>Catálogos Impresos:</strong> Resolución 8K apta para impresión física de alta calidad.</span>
+                       <span className="text-sm text-slate-300"><strong>Gastronomía y Moda:</strong> Menús apetitosos y catálogos de ropa sin modelos costosos.</span>
                      </li>
                    </ul>
                 </div>
                 <div className="bg-black/40 rounded-xl p-6 border border-slate-700/50 backdrop-blur-sm">
-                   <p className="italic text-slate-400 text-center text-sm mb-4">"Antes gastaba $500 dólares por sesión de fotos para mis zapatos. Ahora hago 50 fotos por semana con Nicrolabs por una fracción del costo y mejor calidad."</p>
+                   <p className="italic text-slate-400 text-center text-sm mb-4">"Tengo una ferretería pequeña y nunca pude pagar un fotógrafo. Con Nicrolabs, subo una foto de un taladro tomada con mi celular y sale como un anuncio de marca alemana. Mis ventas online se duplicaron."</p>
                    <div className="flex items-center justify-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-slate-600 overflow-hidden">
                         <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=100&q=80" alt="User" />
                       </div>
                       <div className="text-left">
                         <div className="text-white text-xs font-bold">Carlos M.</div>
-                        <div className="text-slate-500 text-[10px]">Dueño de Zapatería Urbana</div>
+                        <div className="text-slate-500 text-[10px]">Dueño de Negocio</div>
                       </div>
                    </div>
                 </div>
@@ -370,8 +373,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-16">
             <span className="text-yellow-500 font-bold uppercase tracking-wider text-xs mb-2 block">Dudas Comunes</span>
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">¿Es Nicrolabs para mi negocio?</h2>
-            <p className="text-slate-400 max-w-xl mx-auto">Diseñado específicamente para dueños de negocios que necesitan resultados profesionales sin complicaciones técnicas.</p>
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">¿Es Nicrolabs para mí?</h2>
+            <p className="text-slate-400 max-w-xl mx-auto">Diseñado para cualquier persona o negocio que necesite fotos increíbles sin complicaciones técnicas.</p>
           </div>
 
           <div className="space-y-4">

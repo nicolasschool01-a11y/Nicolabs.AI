@@ -4,8 +4,10 @@ import ImageUploader from './components/ImageUploader';
 import ResultDisplay from './components/ResultDisplay';
 import LoginPage from './components/LoginPage';
 import Onboarding from './components/Onboarding';
-import { WandIcon, SparklesIcon, LogoIcon, ArrowLeftIcon, PinterestIcon, UploadIcon, XIcon, CheckCircleIcon, LayoutIcon, HdIcon } from './components/Icons';
-import { editImageWithGemini, fileToBase64, addWatermark } from './services/geminiService';
+import GalleryModal from './components/GalleryModal';
+import StyleAssistantModal from './components/StyleAssistantModal';
+import { WandIcon, SparklesIcon, LogoIcon, ArrowLeftIcon, PinterestIcon, UploadIcon, XIcon, CheckCircleIcon, LayoutIcon, HdIcon, LightbulbIcon, BookOpenIcon, ChevronDownIcon, FaceIcon, RefreshIcon, CameraIcon, GridIcon, TrashIcon, BotIcon } from './components/Icons';
+import { editImageWithGemini, fileToBase64, addWatermark, getStyleSuggestions } from './services/geminiService';
 import { ProcessingState, UploadedImage, StyleOptions, GeneratedImage } from './types';
 
 // --- CONFIGURATION DATA PRO ---
@@ -169,6 +171,8 @@ const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isGuest, setIsGuest] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showGallery, setShowGallery] = useState(false);
+  const [showStyleAssistant, setShowStyleAssistant] = useState(false);
   
   // State for images
   const [images, setImages] = useState<UploadedImage[]>([]);
@@ -185,7 +189,8 @@ const App: React.FC = () => {
     camera: '',
     angle: '',
     format: 'post_square',
-    is4K: false
+    is4K: false,
+    isFaceSwap: false // Default to Product mode
   });
   
   const [history, setHistory] = useState<GeneratedImage[]>([]);
@@ -261,12 +266,59 @@ const App: React.FC = () => {
      }
   };
 
+  const toggleFaceSwapMode = (enabled: boolean) => {
+    setSelectedStyles(prev => ({ ...prev, isFaceSwap: enabled }));
+    // Reset business if switching to face swap to clear product prompts
+    if (enabled) {
+      setSelectedBusinessId('');
+      setPrompt('');
+    }
+  };
+
   const applyTemplate = (templateText: string) => {
     setPrompt(templateText);
   };
 
   const openPinterest = () => {
     window.open('https://www.pinterest.com/search/pins/?q=professional%20product%20photography%20ideas', '_blank');
+  };
+
+  const handleStyleAnalysis = async (description: string) => {
+    const suggestions = await getStyleSuggestions(description, {
+      business: PRESET_STYLES.business,
+      vibe: PRESET_STYLES.vibe,
+      lighting: PRESET_STYLES.lighting,
+      camera: PRESET_STYLES.camera,
+      angle: PRESET_STYLES.angle,
+      format: PRESET_FORMATS
+    });
+
+    if (suggestions) {
+      // Find business value from ID
+      const businessVal = PRESET_STYLES.business.find(b => b.id === suggestions.businessId)?.value || '';
+
+      setSelectedBusinessId(suggestions.businessId);
+      setSelectedStyles(prev => ({
+        ...prev,
+        business: businessVal,
+        vibe: suggestions.vibeValue,
+        lighting: suggestions.lightingValue,
+        camera: suggestions.cameraValue,
+        angle: suggestions.angleValue,
+        format: suggestions.formatId || 'post_square'
+      }));
+
+      if (suggestions.suggestedPromptAddon) {
+        setPrompt(suggestions.suggestedPromptAddon);
+      }
+    }
+  };
+
+  const handleDeleteImage = (id: string) => {
+    setHistory(prev => prev.filter(img => img.id !== id));
+    if (currentImage?.id === id) {
+      setCurrentImage(null);
+    }
   };
 
   const startLoadingMessages = () => {
@@ -308,48 +360,61 @@ const App: React.FC = () => {
       // --- ADVANCED PROMPT ENGINEERING PRO STUDIO ---
       let finalPrompt = "";
       
-      // Role & Goal
-      finalPrompt += `Actúa como un fotógrafo de clase mundial y director de arte experto. `;
-      finalPrompt += `Tu objetivo es crear una imagen comercial galardonada. `;
-      
-      // Reference Handling (Subject)
-      if (images.length > 0) {
-        const imageRefs = images.map(img => `[Imagen ${img.id}]`).join(', ');
-        finalPrompt += `SUJETO PRINCIPAL: Utiliza ${imageRefs} como los productos o sujetos protagonistas. `;
-        finalPrompt += `CRÍTICO: Debes mantener la identidad, logotipos, formas y detalles del sujeto principal EXACTAMENTE como en las referencias. `;
-      }
+      if (selectedStyles.isFaceSwap) {
+        // --- FACE SWAP / IDENTITY MODE ---
+        finalPrompt += `ACT AS AN EXPERT PHOTO EDITOR AND RETOUCHER. `;
+        finalPrompt += `TASK: FACE SWAP / IDENTITY TRANSFER. `;
+        finalPrompt += `SOURCE IMAGES: The uploaded images [Image 1, Image 2, Image 3] contain the Source Identities and Target Bodies. `;
+        finalPrompt += `USER INSTRUCTION: "${prompt}" `;
+        finalPrompt += `\nCRITICAL EXECUTION RULES: `;
+        finalPrompt += `1. Seamlessly replace the face/head as requested in the instruction. `;
+        finalPrompt += `2. MATCH skin tone, lighting direction, grain, and noise of the target image perfectly. `;
+        finalPrompt += `3. Preserve the expression if requested, otherwise adapt source face expression to target body context. `;
+        finalPrompt += `4. Result must be PHOTOREALISTIC. No cartoonish artifacts. `;
+      } else {
+        // --- PRODUCT STUDIO MODE (STANDARD) ---
+        finalPrompt += `Actúa como un fotógrafo de clase mundial y director de arte experto. `;
+        finalPrompt += `Tu objetivo es crear una imagen comercial galardonada. `;
+        
+        // Reference Handling (Subject)
+        if (images.length > 0) {
+          const imageRefs = images.map(img => `[Imagen ${img.id}]`).join(', ');
+          finalPrompt += `SUJETO PRINCIPAL: Utiliza ${imageRefs} como los productos o sujetos protagonistas. `;
+          finalPrompt += `CRÍTICO: Debes mantener la identidad, logotipos, formas y detalles del sujeto principal EXACTAMENTE como en las referencias. `;
+        }
 
-      // Reference Handling (Style)
-      if (styleReference) {
-        finalPrompt += `\nREFERENCIA DE ESTILO: Utiliza la imagen de referencia de estilo proporcionada SOLAMENTE como guía para la iluminación, la composición, el ángulo y la atmósfera (mood). NO copies el objeto de esta imagen, solo su estética. `;
-      }
+        // Reference Handling (Style)
+        if (styleReference) {
+          finalPrompt += `\nREFERENCIA DE ESTILO: Utiliza la imagen de referencia de estilo proporcionada SOLAMENTE como guía para la iluminación, la composición, el ángulo y la atmósfera (mood). NO copies el objeto de esta imagen, solo su estética. `;
+        }
 
-      // Context & Style
-      if (selectedStyles.business) finalPrompt += `\nCONTEXTO DE NEGOCIO: ${selectedStyles.business}`;
-      
-      // User Instruction
-      finalPrompt += `\n\nESCENA DESEADA: "${prompt}"`;
+        // Context & Style
+        if (selectedStyles.business) finalPrompt += `\nCONTEXTO DE NEGOCIO: ${selectedStyles.business}`;
+        
+        // User Instruction
+        finalPrompt += `\n\nESCENA DESEADA: "${prompt}"`;
 
-      // Technical Params
-      const technicalParams = [];
-      if (selectedStyles.vibe) technicalParams.push(`Estilo Visual: ${selectedStyles.vibe}`);
-      if (selectedStyles.lighting) technicalParams.push(`Iluminación: ${selectedStyles.lighting}`);
-      if (selectedStyles.camera) technicalParams.push(`Óptica: ${selectedStyles.camera}`);
-      if (selectedStyles.angle) technicalParams.push(`Ángulo: ${selectedStyles.angle}`);
-      
-      // FORMAT INJECTION
-      if (selectedStyles.format) {
-         const formatPrompt = PRESET_FORMATS.find(f => f.id === selectedStyles.format)?.prompt;
-         if (formatPrompt) {
-            technicalParams.push(`FORMATO Y COMPOSICIÓN: ${formatPrompt}`);
-         }
+        // Technical Params
+        const technicalParams = [];
+        if (selectedStyles.vibe) technicalParams.push(`Estilo Visual: ${selectedStyles.vibe}`);
+        if (selectedStyles.lighting) technicalParams.push(`Iluminación: ${selectedStyles.lighting}`);
+        if (selectedStyles.camera) technicalParams.push(`Óptica: ${selectedStyles.camera}`);
+        if (selectedStyles.angle) technicalParams.push(`Ángulo: ${selectedStyles.angle}`);
+        
+        // FORMAT INJECTION
+        if (selectedStyles.format) {
+           const formatPrompt = PRESET_FORMATS.find(f => f.id === selectedStyles.format)?.prompt;
+           if (formatPrompt) {
+              technicalParams.push(`FORMATO Y COMPOSICIÓN: ${formatPrompt}`);
+           }
+        }
+        
+        if (technicalParams.length > 0) {
+          finalPrompt += `\n\nESPECIFICACIONES TÉCNICAS:\n${technicalParams.join('\n')}`;
+        }
       }
       
-      if (technicalParams.length > 0) {
-        finalPrompt += `\n\nESPECIFICACIONES TÉCNICAS:\n${technicalParams.join('\n')}`;
-      }
-      
-      // High Quality Enforcers
+      // High Quality Enforcers (Shared)
       finalPrompt += `\n\nCALIDAD DE SALIDA:\n`;
       if (selectedStyles.is4K) {
          finalPrompt += `- RESOLUCIÓN EXTREMA 4K/8K.\n- Renderizado RAW sin compresión.\n- Máximo detalle de textura.`;
@@ -413,6 +478,23 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-[#0B1120] text-slate-200 selection:bg-yellow-500/30 pb-20 font-sans">
       
       {showOnboarding && <Onboarding onClose={() => setShowOnboarding(false)} />}
+      
+      <GalleryModal 
+        isOpen={showGallery} 
+        onClose={() => setShowGallery(false)} 
+        images={history} 
+        onDelete={handleDeleteImage}
+        onSelect={(img) => {
+          setCurrentImage(img);
+          setShowGallery(false);
+        }}
+      />
+
+      <StyleAssistantModal
+        isOpen={showStyleAssistant}
+        onClose={() => setShowStyleAssistant(false)}
+        onAnalyze={handleStyleAnalysis}
+      />
 
       {/* --- HEADER --- */}
       <header className="border-b border-slate-800 bg-[#0F172A]/80 backdrop-blur-xl sticky top-0 z-50 shadow-2xl">
@@ -435,6 +517,14 @@ const App: React.FC = () => {
           </div>
           <div className="flex items-center space-x-4">
             
+            <button 
+              onClick={() => setShowGallery(true)}
+              className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-colors relative"
+            >
+              <GridIcon className="w-5 h-5" />
+              {history.length > 0 && <span className="absolute top-1 right-1 w-2 h-2 bg-yellow-500 rounded-full"></span>}
+            </button>
+
             {/* FREE TRIAL BADGE */}
             {!isGuest && (
               <div className="hidden md:flex flex-col items-end mr-2 border-r border-slate-700 pr-4">
@@ -496,15 +586,49 @@ const App: React.FC = () => {
           {/* --- LEFT COLUMN: CONTROLS (7/12) --- */}
           <div className="lg:col-span-7 space-y-8">
             
-            {/* 1. PRODUCT UPLOADER */}
-            <section className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                  <span className="bg-yellow-500 text-black w-5 h-5 rounded flex items-center justify-center text-xs">1</span>
-                  Sube tus Productos
-                </h3>
-                <span className="text-xs text-slate-500">El protagonista (Máx 3)</span>
+            {/* 1. PRODUCT UPLOADER & MODE SELECTOR */}
+            <section className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                 {/* Mode Tabs */}
+                 <div className="flex p-1 bg-slate-900 rounded-lg border border-slate-800 inline-flex">
+                   <button 
+                     onClick={() => toggleFaceSwapMode(false)}
+                     className={`flex items-center gap-2 px-4 py-2 rounded-md text-xs font-bold transition-all ${!selectedStyles.isFaceSwap ? 'bg-slate-700 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}
+                   >
+                     <CameraIcon className="w-4 h-4" />
+                     Modo Producto
+                   </button>
+                   <button 
+                     onClick={() => toggleFaceSwapMode(true)}
+                     className={`flex items-center gap-2 px-4 py-2 rounded-md text-xs font-bold transition-all ${selectedStyles.isFaceSwap ? 'bg-yellow-500 text-black shadow' : 'text-slate-500 hover:text-slate-300'}`}
+                   >
+                     <FaceIcon className="w-4 h-4" />
+                     Cambio de Rostro
+                   </button>
+                 </div>
               </div>
+
+              {selectedStyles.isFaceSwap ? (
+                 <div className="bg-yellow-500/10 border border-yellow-500/20 p-4 rounded-xl flex items-start gap-3">
+                    <FaceIcon className="w-6 h-6 text-yellow-500 mt-1" />
+                    <div>
+                      <h4 className="text-sm font-bold text-white">Modo Intercambio de Rostro Activado</h4>
+                      <p className="text-xs text-slate-300 mt-1">
+                        Sube las fotos y usa el cuadro de texto para indicar qué cara va en qué cuerpo. 
+                        Ej: <em>"Pon la cara de la Imagen 1 en el cuerpo de la persona de la Imagen 2"</em>.
+                      </p>
+                    </div>
+                 </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                    <span className="bg-yellow-500 text-black w-5 h-5 rounded flex items-center justify-center text-xs">1</span>
+                    Sube tus Productos
+                  </h3>
+                  <span className="text-xs text-slate-500">El protagonista (Máx 3)</span>
+                </div>
+              )}
+              
               <ImageUploader 
                 images={images}
                 onImageAdd={handleImageAdd}
@@ -512,7 +636,8 @@ const App: React.FC = () => {
               />
             </section>
 
-             {/* 2. STYLE REFERENCE (NEW) */}
+             {/* 2. STYLE REFERENCE (Disabled in Face Swap Mode) */}
+             {!selectedStyles.isFaceSwap && (
              <section className="space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
@@ -558,15 +683,30 @@ const App: React.FC = () => {
                 )}
               </div>
             </section>
+            )}
 
             {/* 3. STYLE SELECTOR */}
             <section className="space-y-6 bg-slate-900/50 p-6 rounded-2xl border border-slate-800">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="bg-yellow-500 text-black w-5 h-5 rounded flex items-center justify-center text-xs font-bold">3</span>
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Configuración del Estudio</h3>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="bg-yellow-500 text-black w-5 h-5 rounded flex items-center justify-center text-xs font-bold">3</span>
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                    {selectedStyles.isFaceSwap ? "Ajustes de Renderizado" : "Configuración del Estudio"}
+                  </h3>
+                </div>
+                
+                {!selectedStyles.isFaceSwap && (
+                  <button 
+                    onClick={() => setShowStyleAssistant(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full text-[10px] font-bold shadow-lg shadow-indigo-500/20 transition-all border border-indigo-400/30"
+                  >
+                    <BotIcon className="w-3 h-3" />
+                    <span>Auto-Configurar con IA</span>
+                  </button>
+                )}
               </div>
 
-               {/* New Format Section */}
+               {/* New Format Section (Available in both modes) */}
                <div className="space-y-3 mb-6">
                 <label className="text-xs font-semibold text-slate-400 ml-1 flex items-center gap-2">
                   <LayoutIcon className="w-3 h-3 text-yellow-500" />
@@ -594,88 +734,95 @@ const App: React.FC = () => {
               
               <div className="h-px bg-slate-800 w-full mb-6"></div>
 
-              {/* Business Type Grid */}
-              <div className="space-y-3">
-                <label className="text-xs font-semibold text-slate-400 ml-1">Contexto del Negocio</label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {PRESET_STYLES.business.map((s) => (
-                    <button
-                      key={s.id}
-                      onClick={() => selectBusiness(s.id, s.value)}
-                      className={`
-                        relative group p-4 rounded-xl text-left border transition-all duration-200
-                        ${selectedBusinessId === s.id
-                          ? 'bg-yellow-500/10 border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.1)]'
-                          : 'bg-slate-800 border-slate-700 hover:border-slate-500 hover:bg-slate-750'
-                        }
-                      `}
-                    >
-                      <div className="flex justify-between items-start mb-1">
-                        <span className="font-bold text-sm text-slate-100">{s.label}</span>
-                        {selectedBusinessId === s.id && <span className="text-yellow-400 text-xs">●</span>}
-                      </div>
-                      <p className="text-[11px] text-slate-400 leading-tight group-hover:text-slate-300 transition-colors">
-                        {s.desc}
-                      </p>
-                    </button>
-                  ))}
+              {/* HIDE BUSINESS, VIBE, LIGHTING IN FACE SWAP MODE */}
+              {!selectedStyles.isFaceSwap && (
+                <>
+                {/* Business Type Grid */}
+                <div className="space-y-3">
+                  <label className="text-xs font-semibold text-slate-400 ml-1">Contexto del Negocio</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {PRESET_STYLES.business.map((s) => (
+                      <button
+                        key={s.id}
+                        onClick={() => selectBusiness(s.id, s.value)}
+                        className={`
+                          relative group p-4 rounded-xl text-left border transition-all duration-200
+                          ${selectedBusinessId === s.id
+                            ? 'bg-yellow-500/10 border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.1)]'
+                            : 'bg-slate-800 border-slate-700 hover:border-slate-500 hover:bg-slate-750'
+                          }
+                        `}
+                      >
+                        <div className="flex justify-between items-start mb-1">
+                          <span className="font-bold text-sm text-slate-100">{s.label}</span>
+                          {selectedBusinessId === s.id && <span className="text-yellow-400 text-xs">●</span>}
+                        </div>
+                        <p className="text-[11px] text-slate-400 leading-tight group-hover:text-slate-300 transition-colors">
+                          {s.desc}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
 
-              <div className="h-px bg-slate-800 w-full my-4"></div>
+                <div className="h-px bg-slate-800 w-full my-4"></div>
 
-              {/* Vibe & Lighting */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 {/* Vibe */}
-                 <div className="space-y-3">
-                    <label className="text-xs font-semibold text-slate-400 ml-1">Atmósfera Visual</label>
-                    <div className="flex flex-col gap-2">
-                      {PRESET_STYLES.vibe.map((s) => (
-                        <button
-                          key={s.label}
-                          onClick={() => toggleStyle('vibe', s.value)}
-                          className={`
-                            px-3 py-2 rounded-lg text-xs text-left border transition-all flex justify-between items-center
-                            ${selectedStyles.vibe === s.value 
-                              ? 'bg-purple-500/20 border-purple-500 text-purple-100' 
-                              : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-600 hover:text-slate-200'
-                            }
-                          `}
-                        >
-                          <span className="font-medium">{s.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                 </div>
+                {/* Vibe & Lighting */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Vibe */}
+                  <div className="space-y-3">
+                      <label className="text-xs font-semibold text-slate-400 ml-1">Atmósfera Visual</label>
+                      <div className="flex flex-col gap-2">
+                        {PRESET_STYLES.vibe.map((s) => (
+                          <button
+                            key={s.label}
+                            onClick={() => toggleStyle('vibe', s.value)}
+                            className={`
+                              px-3 py-2 rounded-lg text-xs text-left border transition-all flex justify-between items-center
+                              ${selectedStyles.vibe === s.value 
+                                ? 'bg-purple-500/20 border-purple-500 text-purple-100' 
+                                : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-600 hover:text-slate-200'
+                              }
+                            `}
+                          >
+                            <span className="font-medium">{s.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                  </div>
 
-                 {/* Lighting */}
-                 <div className="space-y-3">
-                    <label className="text-xs font-semibold text-slate-400 ml-1">Iluminación de Estudio</label>
-                    <div className="flex flex-col gap-2">
-                      {PRESET_STYLES.lighting.map((s) => (
-                        <button
-                          key={s.label}
-                          onClick={() => toggleStyle('lighting', s.value)}
-                          className={`
-                            px-3 py-2 rounded-lg text-xs text-left border transition-all flex justify-between items-center
-                            ${selectedStyles.lighting === s.value 
-                              ? 'bg-orange-500/20 border-orange-500 text-orange-100' 
-                              : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-600 hover:text-slate-200'
-                            }
-                          `}
-                        >
-                          <span className="font-medium">{s.label}</span>
-                          <span className="text-[10px] opacity-60 ml-2 hidden sm:inline-block truncate max-w-[100px]">{s.desc}</span>
-                        </button>
-                      ))}
-                    </div>
-                 </div>
-              </div>
+                  {/* Lighting */}
+                  <div className="space-y-3">
+                      <label className="text-xs font-semibold text-slate-400 ml-1">Iluminación de Estudio</label>
+                      <div className="flex flex-col gap-2">
+                        {PRESET_STYLES.lighting.map((s) => (
+                          <button
+                            key={s.label}
+                            onClick={() => toggleStyle('lighting', s.value)}
+                            className={`
+                              px-3 py-2 rounded-lg text-xs text-left border transition-all flex justify-between items-center
+                              ${selectedStyles.lighting === s.value 
+                                ? 'bg-orange-500/20 border-orange-500 text-orange-100' 
+                                : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-600 hover:text-slate-200'
+                              }
+                            `}
+                          >
+                            <span className="font-medium">{s.label}</span>
+                            <span className="text-[10px] opacity-60 ml-2 hidden sm:inline-block truncate max-w-[100px]">{s.desc}</span>
+                          </button>
+                        ))}
+                      </div>
+                  </div>
+                </div>
+                </>
+              )}
 
               {/* Advanced Technical */}
                <div className="pt-4 border-t border-slate-800 mt-4">
                   <div className="flex justify-between items-center mb-2">
-                      <label className="text-xs font-semibold text-slate-500 ml-1">Cámara y Ajustes Avanzados</label>
+                      <label className="text-xs font-semibold text-slate-500 ml-1">
+                        {selectedStyles.isFaceSwap ? "Calidad de Fusión" : "Cámara y Ajustes Avanzados"}
+                      </label>
                       <button 
                         onClick={() => toggleStyle('is4K', !selectedStyles.is4K)}
                         className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all ${selectedStyles.is4K ? 'bg-blue-500 text-white shadow-[0_0_10px_rgba(59,130,246,0.5)]' : 'bg-slate-800 text-slate-500 hover:bg-slate-700'}`}
@@ -684,29 +831,33 @@ const App: React.FC = () => {
                          <span>{selectedStyles.is4K ? '4K Ultra ON' : '4K OFF'}</span>
                       </button>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {[...PRESET_STYLES.camera, ...PRESET_STYLES.angle].map((s) => {
-                       const isCamera = PRESET_STYLES.camera.some(c => c.label === s.label);
-                       const type = isCamera ? 'camera' : 'angle';
-                       const isSelected = selectedStyles[type] === s.value;
-                       
-                       return (
-                        <button
-                          key={s.label}
-                          onClick={() => toggleStyle(type, s.value)}
-                          className={`
-                            px-3 py-1.5 rounded text-[11px] font-medium border transition-all
-                            ${isSelected
-                              ? 'bg-emerald-500/20 border-emerald-500 text-emerald-100' 
-                              : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-600'
-                            }
-                          `}
-                        >
-                          {s.label}
-                        </button>
-                       )
-                    })}
-                  </div>
+                  
+                  {/* Hide camera/angle presets in Face Swap as they are less relevant or might confuse the prompt */}
+                  {!selectedStyles.isFaceSwap && (
+                    <div className="flex flex-wrap gap-2">
+                      {[...PRESET_STYLES.camera, ...PRESET_STYLES.angle].map((s) => {
+                        const isCamera = PRESET_STYLES.camera.some(c => c.label === s.label);
+                        const type = isCamera ? 'camera' : 'angle';
+                        const isSelected = selectedStyles[type] === s.value;
+                        
+                        return (
+                          <button
+                            key={s.label}
+                            onClick={() => toggleStyle(type, s.value)}
+                            className={`
+                              px-3 py-1.5 rounded text-[11px] font-medium border transition-all
+                              ${isSelected
+                                ? 'bg-emerald-500/20 border-emerald-500 text-emerald-100' 
+                                : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-600'
+                              }
+                            `}
+                          >
+                            {s.label}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
                </div>
 
             </section>
@@ -715,27 +866,15 @@ const App: React.FC = () => {
             <section className="space-y-3">
               <div className="flex items-center gap-2">
                 <span className="bg-yellow-500 text-black w-5 h-5 rounded flex items-center justify-center text-xs font-bold">4</span>
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Prompt Mágico</h3>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                  {selectedStyles.isFaceSwap ? "Instrucción de Intercambio" : "Prompt Mágico"}
+                </h3>
               </div>
               
               <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
                 
-                {/* EDUCATIONAL BLOCK */}
-                <div className="mb-4 bg-slate-800/40 p-3 rounded-lg border border-slate-700/50">
-                  <p className="text-xs text-slate-300 font-medium mb-1 flex items-center gap-1">
-                    <SparklesIcon className="w-3 h-3 text-yellow-400" />
-                    ¿Qué debo escribir aquí?
-                  </p>
-                  <p className="text-[11px] text-slate-400 leading-snug">
-                    Imagina que le dices al fotógrafo dónde poner tu producto. Escribe el escenario: 
-                    <br />
-                    <em className="text-slate-500">"En una mesa de desayuno junto a una ventana", "Flotando en el espacio", "Sobre una roca en un río". </em>
-                    ¡Nosotros ponemos la cámara y la luz!
-                  </p>
-                </div>
-
-                {/* Smart Templates */}
-                {selectedBusinessId && currentTemplates && (
+                {/* Smart Templates (Product Mode Only) */}
+                {!selectedStyles.isFaceSwap && selectedBusinessId && currentTemplates && (
                   <div className="mb-4">
                     <p className="text-[11px] uppercase font-bold text-yellow-500/80 mb-2 flex items-center">
                       <SparklesIcon className="w-3 h-3 mr-1" />
@@ -760,7 +899,11 @@ const App: React.FC = () => {
                   <textarea
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
-                    placeholder="Ej: 'Mi producto está sobre una mesa de mármol blanco, con luz de atardecer entrando por la ventana y un florero desenfocado atrás'..."
+                    placeholder={
+                      selectedStyles.isFaceSwap 
+                        ? "Ej: 'Toma la cara de la Imagen 1 y ponla en la persona de la Imagen 2. Mantén el peinado original de la Imagen 2.'"
+                        : "Ej: 'Mi producto está sobre una mesa de mármol blanco, con luz de atardecer entrando por la ventana y un florero desenfocado atrás'..."
+                    }
                     className="w-full h-28 bg-black/30 border border-slate-700 rounded-lg p-4 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500/50 transition-all resize-none"
                   />
                   <div className="absolute bottom-3 right-3 text-[10px] text-slate-600 font-mono">
@@ -787,8 +930,10 @@ const App: React.FC = () => {
                       </>
                     ) : (
                       <>
-                        <WandIcon className="w-5 h-5" />
-                        <span>Generar Fotografía Pro</span>
+                        {selectedStyles.isFaceSwap ? <RefreshIcon className="w-5 h-5" /> : <WandIcon className="w-5 h-5" />}
+                        <span>
+                           {selectedStyles.isFaceSwap ? "Intercambiar Rostro" : "Generar Fotografía Pro"}
+                        </span>
                       </>
                     )}
                   </button>
@@ -873,6 +1018,12 @@ const App: React.FC = () => {
                         <span className="text-green-500">✓</span>
                         <span><strong>Tip #2:</strong> Las fotos de producto funcionan mejor si el fondo original es simple.</span>
                     </li>
+                    {selectedStyles.isFaceSwap && (
+                       <li className="flex items-start gap-2">
+                          <span className="text-yellow-500">⚠</span>
+                          <span><strong>Face Swap:</strong> Para mejores resultados, usa fotos donde ambas caras miren en una dirección similar (frente/frente).</span>
+                      </li>
+                    )}
                 </ul>
             </div>
 
