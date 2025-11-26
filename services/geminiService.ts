@@ -1,9 +1,8 @@
-
 import { GoogleGenAI } from "@google/genai";
 
 // Initialize the client
 // API Key is injected via process.env.API_KEY
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Note: Client initialization moved inside functions to support dynamic key updates.
 
 interface ImageInput {
   base64: string;
@@ -18,10 +17,18 @@ export const editImageWithGemini = async (
   is4K: boolean = false
 ): Promise<string> => {
   try {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const parts = [];
 
-    // 1. Add Product Images (Subject)
-    productImages.forEach(img => {
+    // --- CONSTRUCT SMART PAYLOAD ---
+    // Instead of dumping images blindly, we guide the model with text markers.
+
+    // 1. PRODUCT SECTION
+    parts.push({
+      text: "INPUT 1: IMÁGENES DEL PRODUCTO/SUJETO (Mantener identidad visual, logotipos y formas exactas):"
+    });
+
+    productImages.forEach((img, index) => {
       parts.push({
         inlineData: {
           data: img.base64,
@@ -30,8 +37,11 @@ export const editImageWithGemini = async (
       });
     });
 
-    // 2. Add Style Reference Image (Optional)
+    // 2. STYLE REFERENCE SECTION (Optional)
     if (styleReferenceImage) {
+      parts.push({
+        text: "INPUT 2: IMAGEN DE REFERENCIA DE ESTILO (Moodboard). \nINSTRUCCIÓN CRÍTICA: Copiar SOLAMENTE la iluminación, la paleta de colores, el ángulo de cámara y la composición de fondo de esta imagen. NO incluir el objeto que aparece en esta imagen de referencia, solo su estética artística aplicada al PRODUCTO del Input 1."
+      });
       parts.push({
         inlineData: {
           data: styleReferenceImage.base64,
@@ -40,9 +50,9 @@ export const editImageWithGemini = async (
       });
     }
 
-    // 3. Add the text prompt
+    // 3. FINAL PROMPT INSTRUCTION
     parts.push({
-      text: prompt,
+      text: `INSTRUCCIONES DE GENERACIÓN:\n${prompt}`
     });
 
     // Determine Model
@@ -96,6 +106,7 @@ export const editImageWithGemini = async (
 // Helper to analyze business description and suggest styles
 export const getStyleSuggestions = async (description: string, validOptions: any) => {
   try {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const systemPrompt = `
       You are an expert Creative Director and Photographer.
       Your task is to analyze a user's business description and goal, and map it to the BEST available style presets from the provided list.
@@ -131,7 +142,7 @@ export const getStyleSuggestions = async (description: string, validOptions: any
       }
     });
 
-    const text = response.candidates?.[0]?.content?.parts?.[0]?.text;
+    const text = response.text;
     if (!text) throw new Error("No suggestion generated");
     
     return JSON.parse(text);

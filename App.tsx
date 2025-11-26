@@ -6,7 +6,8 @@ import LoginPage from './components/LoginPage';
 import Onboarding from './components/Onboarding';
 import GalleryModal from './components/GalleryModal';
 import StyleAssistantModal from './components/StyleAssistantModal';
-import { WandIcon, SparklesIcon, LogoIcon, ArrowLeftIcon, PinterestIcon, UploadIcon, XIcon, CheckCircleIcon, LayoutIcon, HdIcon, LightbulbIcon, BookOpenIcon, ChevronDownIcon, FaceIcon, RefreshIcon, CameraIcon, GridIcon, TrashIcon, BotIcon } from './components/Icons';
+import TipsTicker from './components/TipsTicker';
+import { WandIcon, SparklesIcon, LogoIcon, ArrowLeftIcon, PinterestIcon, UploadIcon, XIcon, CheckCircleIcon, LayoutIcon, HdIcon, LightbulbIcon, BookOpenIcon, ChevronDownIcon, FaceIcon, RefreshIcon, CameraIcon, GridIcon, TrashIcon, BotIcon, ImageIcon } from './components/Icons';
 import { editImageWithGemini, fileToBase64, addWatermark, getStyleSuggestions } from './services/geminiService';
 import { ProcessingState, UploadedImage, StyleOptions, GeneratedImage } from './types';
 
@@ -173,6 +174,7 @@ const App: React.FC = () => {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showGallery, setShowGallery] = useState(false);
   const [showStyleAssistant, setShowStyleAssistant] = useState(false);
+  const [showMagicGuide, setShowMagicGuide] = useState(false); // New state for guide
   
   // State for images
   const [images, setImages] = useState<UploadedImage[]>([]);
@@ -344,6 +346,21 @@ const App: React.FC = () => {
     startLoadingMessages();
 
     try {
+      // Check for API Key if using Pro features (High Res or Non-Square)
+      const aspectRatio = FORMAT_MAP[selectedStyles.format] || '1:1';
+      const isProModel = aspectRatio !== '1:1' || selectedStyles.is4K;
+
+      if (isProModel) {
+        const aistudio = (window as any).aistudio;
+        if (aistudio) {
+          const hasKey = await aistudio.hasSelectedApiKey();
+          if (!hasKey) {
+             await aistudio.openSelectKey();
+          }
+        }
+      }
+
+      // Prepare Uploaded Images Payload
       const imagesPayload = await Promise.all(images.map(async (img) => ({
         base64: await fileToBase64(img.file),
         mimeType: img.file.type
@@ -373,39 +390,34 @@ const App: React.FC = () => {
         finalPrompt += `4. Result must be PHOTOREALISTIC. No cartoonish artifacts. `;
       } else {
         // --- PRODUCT STUDIO MODE (STANDARD) ---
-        finalPrompt += `Actúa como un fotógrafo de clase mundial y director de arte experto. `;
-        finalPrompt += `Tu objetivo es crear una imagen comercial galardonada. `;
+        finalPrompt += `Rol: Fotógrafo de Producto de Clase Mundial y Director de Arte.\n`;
+        finalPrompt += `Objetivo: Integrar el/los PRODUCTO(S) subido(s) en la escena descrita de manera fotorrealista.\n`;
         
-        // Reference Handling (Subject)
-        if (images.length > 0) {
-          const imageRefs = images.map(img => `[Imagen ${img.id}]`).join(', ');
-          finalPrompt += `SUJETO PRINCIPAL: Utiliza ${imageRefs} como los productos o sujetos protagonistas. `;
-          finalPrompt += `CRÍTICO: Debes mantener la identidad, logotipos, formas y detalles del sujeto principal EXACTAMENTE como en las referencias. `;
-        }
-
-        // Reference Handling (Style)
+        // 1. INPUT DEFINITION (Crucial for adherence)
+        finalPrompt += `\nANÁLISIS DE INPUTS: `;
+        finalPrompt += `\n- INPUT 1 (Imágenes Cargadas): Son el SUJETO/PRODUCTO. Mantener geometría, logos, textos y detalles EXACTOS. Si hay varias imágenes, úsalas como diferentes vistas del mismo producto o como un conjunto de productos.`;
         if (styleReference) {
-          finalPrompt += `\nREFERENCIA DE ESTILO: Utiliza la imagen de referencia de estilo proporcionada SOLAMENTE como guía para la iluminación, la composición, el ángulo y la atmósfera (mood). NO copies el objeto de esta imagen, solo su estética. `;
+           finalPrompt += `\n- INPUT 2 (Imagen de Referencia): Es SOLO para ESTILO (Moodboard). Copiar iluminación, paleta de color, texturas de fondo y ángulo de cámara. NO generar el objeto que aparece en esta referencia, solo su "vibe".`;
         }
 
-        // Context & Style
-        if (selectedStyles.business) finalPrompt += `\nCONTEXTO DE NEGOCIO: ${selectedStyles.business}`;
+        // 2. CONTEXT
+        if (selectedStyles.business) finalPrompt += `\n\nCONTEXTO DE NEGOCIO: ${selectedStyles.business}`;
         
-        // User Instruction
-        finalPrompt += `\n\nESCENA DESEADA: "${prompt}"`;
+        // 3. USER SCENE INSTRUCTION
+        finalPrompt += `\n\nDESCRIPCIÓN DE LA ESCENA: "${prompt}"`;
 
-        // Technical Params
+        // 4. TECHNICAL SPECS
         const technicalParams = [];
         if (selectedStyles.vibe) technicalParams.push(`Estilo Visual: ${selectedStyles.vibe}`);
         if (selectedStyles.lighting) technicalParams.push(`Iluminación: ${selectedStyles.lighting}`);
-        if (selectedStyles.camera) technicalParams.push(`Óptica: ${selectedStyles.camera}`);
-        if (selectedStyles.angle) technicalParams.push(`Ángulo: ${selectedStyles.angle}`);
+        if (selectedStyles.camera) technicalParams.push(`Óptica/Lente: ${selectedStyles.camera}`);
+        if (selectedStyles.angle) technicalParams.push(`Ángulo de Cámara: ${selectedStyles.angle}`);
         
         // FORMAT INJECTION
         if (selectedStyles.format) {
            const formatPrompt = PRESET_FORMATS.find(f => f.id === selectedStyles.format)?.prompt;
            if (formatPrompt) {
-              technicalParams.push(`FORMATO Y COMPOSICIÓN: ${formatPrompt}`);
+              technicalParams.push(`COMPOSICIÓN Y FORMATO: ${formatPrompt}`);
            }
         }
         
@@ -414,20 +426,17 @@ const App: React.FC = () => {
         }
       }
       
-      // High Quality Enforcers (Shared)
+      // High Quality Enforcers
       finalPrompt += `\n\nCALIDAD DE SALIDA:\n`;
       if (selectedStyles.is4K) {
-         finalPrompt += `- RESOLUCIÓN EXTREMA 4K/8K.\n- Renderizado RAW sin compresión.\n- Máximo detalle de textura.`;
+         finalPrompt += `- RESOLUCIÓN EXTREMA 8K RAW.\n- Renderizado sin compresión.\n- Micro-detalles de textura visibles.`;
       } else {
-         finalPrompt += `- Resolución 8K, texturas hiperrealistas.\n`;
-         finalPrompt += `- Color grading cinematográfico profesional.\n`;
+         finalPrompt += `- Fotografía comercial de alta gama (8K).\n`;
+         finalPrompt += `- Color grading cinematográfico.\n`;
       }
-      finalPrompt += `- Integración perfecta de luces y sombras.\n`;
+      finalPrompt += `- Iluminación físicamente correcta (Ray Tracing style).\n`;
 
       console.log("Generando con prompt:", finalPrompt);
-
-      // Determine Ratio
-      const aspectRatio = FORMAT_MAP[selectedStyles.format] || '1:1';
 
       let resultUrl = await editImageWithGemini(
         imagesPayload, 
@@ -537,7 +546,7 @@ const App: React.FC = () => {
             )}
 
             <div className="hidden md:flex items-center space-x-2 text-xs font-medium text-slate-500 bg-slate-900/50 px-3 py-1.5 rounded-full border border-slate-800">
-              <span className={`w-2 h-2 rounded-full ${isGuest ? 'bg-orange-500' : 'bg-green-500'} animate-pulse`}></span>
+              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
               <span>{isGuest ? 'Modo Demo' : 'Gemini Pro'}</span>
             </div>
             {isGuest ? (
@@ -552,6 +561,8 @@ const App: React.FC = () => {
           </div>
         </div>
       </header>
+
+      <TipsTicker />
 
       {isGuest && (
         <div className="bg-yellow-500/10 border-b border-yellow-500/20 text-center py-2 px-4 animate-in slide-in-from-top duration-500">
@@ -636,7 +647,7 @@ const App: React.FC = () => {
               />
             </section>
 
-             {/* 2. STYLE REFERENCE (Disabled in Face Swap Mode) */}
+             {/* 2. STYLE REFERENCE (MOODBOARD) */}
              {!selectedStyles.isFaceSwap && (
              <section className="space-y-3">
               <div className="flex items-center justify-between">
@@ -647,40 +658,55 @@ const App: React.FC = () => {
                 <span className="text-xs text-slate-500">Opcional</span>
               </div>
               
-              <div className="p-4 bg-slate-900/50 rounded-xl border border-slate-800">
-                <p className="text-xs text-slate-400 mb-3">
-                  ¿Tienes una foto que te inspira? Súbela aquí y la IA copiará la iluminación y el ángulo, pero usando TU producto.
-                </p>
-                <input 
-                  type="file" 
-                  ref={styleInputRef} 
-                  onChange={handleStyleRefAdd} 
-                  accept="image/*" 
-                  className="hidden" 
-                />
-                
-                {styleReference ? (
-                  <div className="relative w-full aspect-[21/9] rounded-lg overflow-hidden border border-slate-600 group">
-                    <img src={styleReference.previewUrl} alt="Style Ref" className="w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity" />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                       <span className="bg-black/50 px-3 py-1 rounded-full text-xs font-bold text-white backdrop-blur-sm">Referencia Activa</span>
-                    </div>
-                    <button 
-                      onClick={() => setStyleReference(null)}
-                      className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
-                    >
-                      <XIcon className="w-4 h-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <button 
-                    onClick={() => styleInputRef.current?.click()}
-                    className="w-full py-4 border-2 border-dashed border-slate-700 hover:border-slate-500 rounded-lg text-slate-400 hover:text-white transition-all flex flex-col items-center justify-center gap-2"
-                  >
-                    <UploadIcon className="w-5 h-5" />
-                    <span className="text-xs font-medium">Cargar foto de inspiración (Ej: Pinterest)</span>
-                  </button>
-                )}
+              <div className="p-5 bg-slate-900/50 rounded-xl border border-slate-800 relative group">
+                <div className="flex flex-col md:flex-row gap-4 items-center">
+                   <div className="flex-1">
+                      <h4 className="text-xs font-bold text-slate-300 mb-1 flex items-center gap-2">
+                        <LightbulbIcon className="w-4 h-4 text-yellow-400" />
+                        ¿Qué es esto?
+                      </h4>
+                      <p className="text-xs text-slate-400 leading-relaxed">
+                        Sube una foto que tenga la <strong>iluminación</strong> o el <strong>ángulo</strong> exacto que quieres copiar. 
+                        <br/><span className="text-slate-500 italic">Ej: Una foto de Pinterest con luz suave de ventana.</span>
+                      </p>
+                      <p className="text-[10px] text-yellow-500/80 mt-2 font-semibold">
+                         La IA tomará tu producto (Sección 1) y lo pondrá en este estilo.
+                      </p>
+                   </div>
+                   
+                   <div className="w-full md:w-48">
+                      <input 
+                        type="file" 
+                        ref={styleInputRef} 
+                        onChange={handleStyleRefAdd} 
+                        accept="image/*" 
+                        className="hidden" 
+                      />
+                      
+                      {styleReference ? (
+                        <div className="relative w-full aspect-video rounded-lg overflow-hidden border-2 border-yellow-500/50 shadow-lg group-hover:shadow-yellow-500/10 transition-all">
+                          <img src={styleReference.previewUrl} alt="Style Ref" className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                             <span className="bg-black/60 px-3 py-1 rounded-full text-[10px] font-bold text-white backdrop-blur-sm border border-white/10">Estilo Activo</span>
+                          </div>
+                          <button 
+                            onClick={() => setStyleReference(null)}
+                            className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-sm"
+                          >
+                            <XIcon className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ) : (
+                        <button 
+                          onClick={() => styleInputRef.current?.click()}
+                          className="w-full aspect-video border-2 border-dashed border-slate-700 hover:border-slate-500 rounded-lg text-slate-400 hover:text-white transition-all flex flex-col items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800"
+                        >
+                          <ImageIcon className="w-6 h-6 text-slate-600 group-hover:text-slate-400" />
+                          <span className="text-[10px] font-bold uppercase tracking-wide">Cargar Moodboard</span>
+                        </button>
+                      )}
+                   </div>
+                </div>
               </div>
             </section>
             )}
@@ -864,12 +890,55 @@ const App: React.FC = () => {
 
             {/* 4. PROMPT & GENERATE */}
             <section className="space-y-3">
-              <div className="flex items-center gap-2">
-                <span className="bg-yellow-500 text-black w-5 h-5 rounded flex items-center justify-center text-xs font-bold">4</span>
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-                  {selectedStyles.isFaceSwap ? "Instrucción de Intercambio" : "Prompt Mágico"}
-                </h3>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="bg-yellow-500 text-black w-5 h-5 rounded flex items-center justify-center text-xs font-bold">4</span>
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                    {selectedStyles.isFaceSwap ? "Instrucción de Intercambio" : "Prompt Mágico"}
+                  </h3>
+                </div>
+                 <button 
+                    onClick={() => setShowMagicGuide(!showMagicGuide)}
+                    className="text-xs text-yellow-500 hover:text-yellow-400 font-bold flex items-center gap-1 transition-colors"
+                  >
+                    <BookOpenIcon className="w-4 h-4" />
+                    <span>Nicrolabs Academy: Guía de Prompts</span>
+                    <ChevronDownIcon className={`w-3 h-3 transition-transform ${showMagicGuide ? 'rotate-180' : ''}`} />
+                  </button>
               </div>
+
+               {/* ACADEMY / GUIDE DROPDOWN */}
+               {showMagicGuide && (
+                <div className="bg-slate-900/80 border border-yellow-500/20 rounded-xl p-5 mb-4 animate-in slide-in-from-top-2">
+                   <h4 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
+                     <LightbulbIcon className="w-4 h-4 text-yellow-400" />
+                     La Fórmula Secreta para Prompts Perfectos
+                   </h4>
+                   <p className="text-xs text-slate-400 mb-3">
+                     No describas tu producto (la IA ya lo ve). Describe la escena.
+                   </p>
+                   <div className="bg-black/40 p-3 rounded-lg border border-slate-700 font-mono text-xs text-yellow-200 mb-3">
+                      Sujeto (Tu Foto) + Entorno + Iluminación + Detalles
+                   </div>
+                   <div className="grid grid-cols-2 gap-4 text-xs">
+                      <div>
+                        <strong className="text-white block mb-1">✅ Palabras Poderosas:</strong>
+                        <ul className="text-slate-400 space-y-1 list-disc list-inside">
+                          <li>Cinemático, Volumétrico</li>
+                          <li>Minimalista, Elegante</li>
+                          <li>Luz natural, Rayos de sol</li>
+                        </ul>
+                      </div>
+                      <div>
+                        <strong className="text-white block mb-1">❌ Qué evitar:</strong>
+                        <ul className="text-slate-400 space-y-1 list-disc list-inside">
+                           <li>"Una foto de un producto" (Muy vago)</li>
+                           <li>Describir colores que no quieres</li>
+                        </ul>
+                      </div>
+                   </div>
+                </div>
+               )}
               
               <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
                 
@@ -902,7 +971,7 @@ const App: React.FC = () => {
                     placeholder={
                       selectedStyles.isFaceSwap 
                         ? "Ej: 'Toma la cara de la Imagen 1 y ponla en la persona de la Imagen 2. Mantén el peinado original de la Imagen 2.'"
-                        : "Ej: 'Mi producto está sobre una mesa de mármol blanco, con luz de atardecer entrando por la ventana y un florero desenfocado atrás'..."
+                        : "Ej: 'Sobre una mesa de mármol blanco, con luz de atardecer entrando por la ventana y un florero desenfocado atrás'..."
                     }
                     className="w-full h-28 bg-black/30 border border-slate-700 rounded-lg p-4 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500/50 transition-all resize-none"
                   />
