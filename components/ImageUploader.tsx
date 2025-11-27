@@ -68,9 +68,12 @@ const ImageSlot: React.FC<{
           <div className="bg-slate-700/50 p-3 rounded-full mb-2 group-hover:bg-yellow-500/20 group-hover:scale-110 transition-all duration-300">
              <UploadIcon className="w-6 h-6 text-slate-500 group-hover:text-yellow-400 transition-colors" />
           </div>
-          <span className="text-xs font-medium text-slate-400 group-hover:text-slate-200 transition-colors">
-            Subir {id}
+          <span className="text-xs font-bold text-slate-300 group-hover:text-white transition-colors uppercase tracking-wide">
+            Subir Foto {id}
           </span>
+          <p className="text-[10px] text-slate-500 mt-1 max-w-[120px] leading-tight">
+            {id === 1 ? "Tu foto principal (Buena luz)" : "Ángulo o detalle extra"}
+          </p>
         </div>
       )}
     </div>

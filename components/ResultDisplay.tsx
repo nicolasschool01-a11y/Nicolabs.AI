@@ -17,29 +17,30 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ imageUrl }) => {
   };
 
   return (
-    <div className="relative w-full max-w-md mx-auto bg-slate-900 rounded-xl overflow-hidden border border-yellow-500/30 shadow-[0_0_30px_rgba(234,179,8,0.1)] group">
-      {/* Removed aspect-square to allow image to dictate height (16:9, 9:16 support) */}
+    <div className="relative w-full h-full flex items-center justify-center bg-black/20 rounded-xl overflow-hidden group">
+      {/* Dynamic Image Container - Ensures image is fully visible without strict aspect ratio forcing */}
       <img
         src={imageUrl}
         alt="Generada"
-        className="w-full h-auto object-contain min-h-[300px]"
+        className="max-w-full max-h-[70vh] w-auto h-auto object-contain shadow-2xl rounded-lg"
       />
       
-      {/* Overlay Actions */}
-      <div className="absolute bottom-4 right-4 flex space-x-2">
+      {/* Overlay Actions - Bottom Right */}
+      <div className="absolute bottom-4 right-4 flex space-x-2 z-20">
         <button
           onClick={handleDownload}
-          className="flex items-center space-x-2 bg-yellow-500 hover:bg-yellow-400 text-slate-900 px-4 py-2 rounded-full font-semibold transition-colors shadow-lg"
+          className="flex items-center space-x-2 bg-yellow-500 hover:bg-yellow-400 text-slate-900 px-6 py-3 rounded-full font-bold transition-all shadow-[0_0_20px_rgba(234,179,8,0.3)] hover:scale-105"
         >
-          <DownloadIcon className="w-4 h-4" />
-          <span>Descargar</span>
+          <DownloadIcon className="w-5 h-5" />
+          <span>Descargar HD</span>
         </button>
       </div>
 
-       <div className="absolute top-4 left-4">
-        <div className="flex items-center space-x-1 bg-yellow-500/20 backdrop-blur-md border border-yellow-500/30 text-yellow-300 px-3 py-1 rounded-full text-xs font-semibold shadow-lg">
+       {/* Overlay Badge - Top Left */}
+       <div className="absolute top-4 left-4 z-20">
+        <div className="flex items-center space-x-1.5 bg-black/60 backdrop-blur-md border border-white/10 text-yellow-300 px-3 py-1.5 rounded-full text-xs font-bold shadow-lg">
           <SparklesIcon className="w-3 h-3" />
-          <span>Gemini Pro Vision</span>
+          <span>Nicrolabs Studio</span>
         </div>
       </div>
     </div>

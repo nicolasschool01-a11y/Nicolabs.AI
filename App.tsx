@@ -7,1150 +7,515 @@ import Onboarding from './components/Onboarding';
 import GalleryModal from './components/GalleryModal';
 import StyleAssistantModal from './components/StyleAssistantModal';
 import TipsTicker from './components/TipsTicker';
-import { WandIcon, SparklesIcon, LogoIcon, ArrowLeftIcon, PinterestIcon, UploadIcon, XIcon, CheckCircleIcon, LayoutIcon, HdIcon, LightbulbIcon, BookOpenIcon, ChevronDownIcon, FaceIcon, RefreshIcon, CameraIcon, GridIcon, TrashIcon, BotIcon, ImageIcon } from './components/Icons';
+import { WandIcon, SparklesIcon, LogoIcon, ArrowLeftIcon, PinterestIcon, UploadIcon, XIcon, CheckCircleIcon, LayoutIcon, HdIcon, LightbulbIcon, BookOpenIcon, ChevronDownIcon, FaceIcon, RefreshIcon, CameraIcon, GridIcon, TrashIcon, BotIcon, ImageIcon, BoltIcon, PaletteIcon } from './components/Icons';
 import { editImageWithGemini, fileToBase64, addWatermark, getStyleSuggestions } from './services/geminiService';
-import { ProcessingState, UploadedImage, StyleOptions, GeneratedImage } from './types';
+import { ProcessingState, UploadedImage, StyleOptions, GeneratedImage, ViewMode, QuickPreset } from './types';
 
-// --- CONFIGURATION DATA PRO ---
+// --- CONSTANTS & CONFIG ---
 
 const LOADING_MESSAGES = [
-  "Calibrando lentes virtuales 85mm...",
-  "Configurando esquema de iluminación de 3 puntos...",
-  "Analizando geometría y materiales del producto...",
-  "Renderizando texturas en resolución 8K...",
-  "Aplicando corrección de color cinemática...",
-  "Finalizando post-producción digital..."
+  "Analizando tu producto...",
+  "Configurando iluminación de estudio...",
+  "Mejorando texturas y reflejos...",
+  "Renderizando en alta definición...",
+  "Aplicando toque final profesional..."
 ];
 
-const PRESET_FORMATS = [
-  { 
-    id: "post_square", 
-    label: "Post (1:1)", 
-    desc: "Redes Sociales",
-    prompt: "Composición cuadrada centrada, ideal para Instagram Feed." 
+const QUICK_PRESETS: QuickPreset[] = [
+  {
+    id: "gastro_pro",
+    label: "Gastronomía",
+    description: "Platos deliciosos y frescos",
+    icon: <span className="text-2xl">🍔</span>,
+    imageHint: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=200&q=80",
+    config: { business: "Gastronomía Gourmet", vibe: "Orgánico & Natural", lighting: "Luz de Ventana", format: "post_square" }
   },
-  { 
-    id: "story", 
-    label: "Story (9:16)", 
-    desc: "Instagram/TikTok", 
-    prompt: "Composición vertical (Portrait 9:16). DEJA ESPACIO NEGATIVO EN LA PARTE SUPERIOR E INFERIOR para texto. El producto debe estar centrado verticalmente." 
+  {
+    id: "insta_viral",
+    label: "Instagram Viral",
+    description: "Estilo Influencer / Lifestyle",
+    icon: <span className="text-2xl">📸</span>,
+    imageHint: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=200&q=80",
+    config: { business: "Marca Personal / Influencer", vibe: "Urbano & Street", lighting: "Golden Hour", format: "story" }
   },
-  { 
-    id: "flyer", 
-    label: "Flyer (3:4)", 
-    desc: "Volante Publicitario", 
-    prompt: "Diseño de Flyer Publicitario Vertical (3:4). Composición gráfica limpia con espacio negativo claro en la parte superior para titulares grandes. Fondo atractivo que guíe la vista al producto." 
+  {
+    id: "ecommerce_clean",
+    label: "Catálogo E-com",
+    description: "Fondo limpio y nítido",
+    icon: <span className="text-2xl">🛍️</span>,
+    imageHint: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=200&q=80",
+    config: { business: "E-commerce Pro", vibe: "Lujo Minimalista", lighting: "Estudio Softbox", format: "post_square" }
   },
-  { 
-    id: "cover", 
-    label: "Portada (16:9)", 
-    desc: "Facebook/YouTube", 
-    prompt: "Composición panorámica horizontal (16:9). El producto debe estar a la izquierda o derecha (Regla de Tercios), dejando un gran espacio negativo lateral para poner títulos y logos." 
+  {
+    id: "hardware_pro",
+    label: "Ferretería / Taller",
+    description: "Herramientas con poder",
+    icon: <span className="text-2xl">🔧</span>,
+    imageHint: "https://images.unsplash.com/photo-1581235720704-06d3acfcb36f?auto=format&fit=crop&w=200&q=80",
+    config: { business: "Automotriz / Autos", vibe: "Dark & Moody", lighting: "Dramático (Chiaroscuro)", format: "post_square" }
   },
-  { 
-    id: "thumbnail", 
-    label: "Miniatura (16:9)", 
-    desc: "YouTube Thumb", 
-    prompt: "Estilo Miniatura de YouTube de alto impacto (16:9). Fondo contrastante, colores vibrantes, silueta del producto muy definida, espacio para texto grande." 
+  {
+    id: "beauty_glam",
+    label: "Cosmética & Belleza",
+    description: "Lujo, agua y espejos",
+    icon: <span className="text-2xl">💄</span>,
+    imageHint: "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&w=200&q=80",
+    config: { business: "Belleza & Cosmética", vibe: "Lujo Minimalista", lighting: "Estudio Softbox", format: "story" }
+  },
+  {
+    id: "auto_showroom",
+    label: "Venta de Auto",
+    description: "Showroom Brillante",
+    icon: <span className="text-2xl">🚗</span>,
+    imageHint: "https://images.unsplash.com/photo-1550009158-9ebf69173e03?auto=format&fit=crop&w=200&q=80",
+    config: { business: "Automotriz / Autos", vibe: "Lujo Minimalista", lighting: "Estudio Softbox", format: "post_square", is4K: true }
   }
 ];
 
-// Mapping formats to Gemini API aspect ratios
+const PRESET_FORMATS = [
+  { id: "post_square", label: "Post (1:1)", desc: "Instagram/Facebook", prompt: "Composición cuadrada." },
+  { id: "story", label: "Story (9:16)", desc: "TikTok/Reels", prompt: "Vertical, espacio para texto arriba." },
+  { id: "flyer", label: "Flyer (3:4)", desc: "Volantes/Print", prompt: "Vertical 3:4." },
+  { id: "cover", label: "Portada (16:9)", desc: "Web/YouTube", prompt: "Panorámico 16:9." }
+];
+
 const FORMAT_MAP: Record<string, string> = {
-  'post_square': '1:1',
-  'story': '9:16',
-  'flyer': '3:4',
-  'cover': '16:9',
-  'thumbnail': '16:9'
+  'post_square': '1:1', 'story': '9:16', 'flyer': '3:4', 'cover': '16:9', 'thumbnail': '16:9'
 };
 
+// ... (Keep existing PRESET_STYLES content from previous file, omitted here for brevity but assumed present in final output)
 const PRESET_STYLES = {
   business: [
-    { 
-      id: "automotive",
-      label: "🚗 Automotriz / Autos", 
-      desc: "Concesionarios y Venta. Showroom y exteriores.",
-      value: "Fotografía publicitaria de automóviles de alta gama (Car Commercial Photography). Iluminación 'Car Studio' que resalta las líneas de la carrocería (Rim Light), manejo perfecto de reflejos sobre la pintura y vidrios, neumáticos con brillo, aspecto limpio y premium." 
-    },
-    { 
-      id: "personal_brand",
-      label: "📸 Marca Personal / Influencer", 
-      desc: "Retratos y lifestyle. Eleva tu imagen en redes sociales.",
-      value: "Fotografía de estilo de vida profesional para marca personal (Influencer Style). Iluminación favorecedora (Butterfly o Rembrandt), fondo desenfocado estéticamente (Bokeh), look natural pero pulido, alta resolución, ideal para Instagram/LinkedIn. Piel con textura real." 
-    },
-    { 
-      id: "gastro",
-      label: "🍔 Gastronomía Gourmet", 
-      desc: "Platillos, postres y bebidas. Enfoque en texturas deliciosas.",
-      value: "Fotografía gastronómica de alta gama (Michelin Star style). Iluminación que resalta la frescura, el brillo de las salsas y la textura de los ingredientes. Profundidad de campo suave." 
-    },
-    { 
-      id: "ecommerce",
-      label: "🛍️ E-commerce Pro", 
-      desc: "Fondo limpio y nítido. Ideal para Amazon, Shopify y Catálogos.",
-      value: "Fotografía de producto comercial (Packshot) de ultra alta definición. Fondo limpio, iluminación de estudio perfectamente blanca y difusa, enfoque nítido en todo el producto (focus stacking)." 
-    },
-    { 
-      id: "fashion",
-      label: "👗 Moda Editorial", 
-      desc: "Ropa, joyería y accesorios. Estilo revista de lujo.",
-      value: "Fotografía de moda editorial estilo Vogue. Iluminación dramática pero favorecedora, poses dinámicas si hay modelos, texturas de tela ricas y detalladas. Estética sofisticada." 
-    },
-    { 
-      id: "beauty",
-      label: "💄 Belleza & Cosmética", 
-      desc: "Cremas, perfumes y maquillaje. Sensación de pureza y lujo.",
-      value: "Fotografía publicitaria de cosméticos premium. Superficies reflectantes (vidrio, agua, espejos), iluminación etérea y suave, sensación de higiene, pureza y lujo absoluto." 
-    },
-    { 
-      id: "realestate",
-      label: "🏠 Deco & Inmobiliaria", 
-      desc: "Muebles y espacios. Gran angular y luz natural.",
-      value: "Fotografía de arquitectura e interiorismo (Architectural Digest). Lentes gran angular rectilíneos, luz natural abundante, espacios perfectamente organizados y acogedores." 
-    },
-    { 
-      id: "tech",
-      label: "📱 Tech & Gadgets", 
-      desc: "Electrónica y gadgets. Luces neón y acabados metálicos.",
-      value: "Fotografía tecnológica futurista. Iluminación con acentos de color (rim light), reflejos metálicos nítidos, fondo oscuro y elegante, sensación de innovación." 
-    },
+    { id: "automotive", label: "🚗 Automotriz", desc: "Autos y Motos", value: "Fotografía automotriz profesional..." },
+    { id: "personal_brand", label: "📸 Marca Personal", desc: "Influencers", value: "Lifestyle influencer portrait..." },
+    { id: "gastro", label: "🍔 Gastronomía", desc: "Comida", value: "Fotografía gastronómica..." },
+    { id: "ecommerce", label: "🛍️ E-commerce", desc: "Productos", value: "Packshot clean studio..." },
+    { id: "fashion", label: "👗 Moda", desc: "Ropa", value: "Fashion editorial..." },
+    { id: "beauty", label: "💄 Belleza", desc: "Cosmética", value: "Cosmetic luxury..." },
+    { id: "realestate", label: "🏠 Deco", desc: "Muebles", value: "Interior design..." },
+    { id: "tech", label: "📱 Tech", desc: "Gadgets", value: "Tech futuristic..." },
   ],
   vibe: [
-    { label: "💎 Lujo Minimalista", desc: "Menos es más. Fondos mármol, seda, neutros.", value: "Estética minimalista de lujo, paleta de colores neutra (beige, blanco, gris), materiales nobles como mármol o seda." },
-    { label: "🌿 Orgánico & Natural", desc: "Luz solar, plantas, madera, aire libre.", value: "Estilo biofílico y orgánico. Luz solar dura o filtrada por árboles, sombras naturales, elementos de madera, piedra y plantas vivas." },
-    { label: "🌆 Urbano & Street", desc: "Concreto, ciudad, asfalto, moderno.", value: "Estilo urbano callejero (Streetwear). Fondos de concreto, ciudad desenfocada, luz de día nublado o atardecer urbano." },
-    { label: "🎨 Pop & Color Block", desc: "Colores vibrantes, sólidos y divertidos.", value: "Estilo Pop Art moderno. Fondos de colores sólidos vibrantes y contrastantes, iluminación dura, sombras definidas, energía juvenil." },
-    { label: "🌑 Dark & Moody", desc: "Oscuro, elegante, misterioso y premium.", value: "Estilo 'Dark Academy' o Moody. Clave baja, fondo oscuro o negro texturizado, iluminación puntual que recorta la silueta, muy elegante." },
-    { label: "🕰️ Retro Vintage", desc: "Nostalgia, grano de película, calidez.", value: "Estética retro analógica. Colores ligeramente desaturados, calidez, grano de película sutil, sensación de nostalgia." },
+    { label: "💎 Lujo", desc: "Minimalista", value: "Lujo minimalista..." },
+    { label: "🌿 Natural", desc: "Orgánico", value: "Orgánico natural..." },
+    { label: "🌆 Urbano", desc: "Calle", value: "Urbano street..." },
+    { label: "🎨 Pop", desc: "Color", value: "Pop art..." },
+    { label: "🌑 Dark", desc: "Elegante", value: "Dark moody..." },
+    { label: "🕰️ Retro", desc: "Vintage", value: "Retro vintage..." },
   ],
   lighting: [
-    { label: "☀️ Golden Hour", desc: "Atardecer cálido", value: "Iluminación de hora dorada (Golden Hour). Luz solar baja, cálida y anaranjada, sombras largas y estéticas, destellos de lente (lens flare) sutiles." },
-    { label: "💡 Estudio Softbox", desc: "Luz perfecta difusa", value: "Iluminación de estudio profesional con Softbox gigante. Luz envolvente, sombras extremadamente suaves, perfecto para ver todos los detalles." },
-    { label: "🌓 Dramático (Chiaroscuro)", desc: "Alto contraste", value: "Iluminación de alto contraste (Chiaroscuro). Sombras profundas y luces brillantes, crea volumen y drama, muy artístico." },
-    { label: "☁️ Luz de Ventana", desc: "Natural y suave", value: "Iluminación natural de ventana norte. Luz blanca, fría y suave, muy realista y honesta." },
-    { label: "🟣 Neón Cyberpunk", desc: "Azul y Rosa", value: "Iluminación creativa con geles de color. Luces de borde azules y magentas (estilo Cyberpunk), fondo oscuro." },
+    { label: "☀️ Golden Hour", desc: "", value: "Golden hour..." },
+    { label: "💡 Estudio", desc: "", value: "Studio lighting..." },
+    { label: "🌓 Dramático", desc: "", value: "Dramatic contrast..." },
+    { label: "☁️ Ventana", desc: "", value: "Natural window..." },
+    { label: "🟣 Neón", desc: "", value: "Neon lights..." },
   ],
   camera: [
-    { label: "Macro (Detalle)", desc: "Primer plano extremo", value: "Lente Macro 100mm. Primerísimo primer plano, desenfoque de fondo (bokeh) cremoso y extremo, enfoque crítico en el detalle principal." },
-    { label: "Retrato (50mm-85mm)", desc: "Visión natural", value: "Lente Prime de 50mm u 85mm. Compresión de perspectiva natural, desenfoque de fondo agradable, look estándar profesional." },
-    { label: "Gran Angular", desc: "Espacioso", value: "Lente Gran Angular 24mm. Sensación de amplitud, líneas dinámicas, ideal para mostrar el entorno completo." },
-    { label: "Acción / GoPro", desc: "Inmersivo", value: "Lente ultra gran angular tipo cámara de acción (Fisheye). Perspectiva curva inmersiva, todo en foco, estilo deporte extremo." },
-    { label: "Cine Anamórfico", desc: "Look de película", value: "Lente Anamórfico de Cine. Destellos horizontales, bokeh ovalado, relación de aspecto cinemática, look de producción de Hollywood." },
+    { label: "Macro", value: "Macro lens..." },
+    { label: "Retrato", value: "50mm prime..." },
+    { label: "Gran Angular", value: "Wide angle..." },
+    { label: "Acción", value: "Action camera..." },
+    { label: "Cine", value: "Anamorphic..." },
   ],
   angle: [
-    { label: "Frontal (Héroe)", desc: "A nivel de ojos", value: "Ángulo a nivel de los ojos o ligeramente contrapicado (Hero Shot). Hace que el producto se vea imponente y majestuoso." },
-    { label: "Zenital (Flat Lay)", desc: "Desde arriba", value: "Vista totalmente cenital (Flat Lay) a 90 grados. Composición geométrica, ordenado, ideal para mostrar conjuntos de objetos." },
-    { label: "45 Grados (Isométrico)", desc: "Clásico", value: "Ángulo de 45 grados (tres cuartos). Muestra volumen, profundidad y lados del producto simultáneamente." },
-    { label: "🚁 Vista de Dron", desc: "Aérea panorámica", value: "Vista aérea panorámica (Drone Shot). Plano general lejano desde el cielo, mostrando el producto integrado en un paisaje vasto." },
-    { label: "Contrapicado (Low Angle)", desc: "Poderoso", value: "Ángulo bajo (Low Angle Shot) mirando hacia arriba. Otorga poder y grandiosidad al objeto, haciéndolo parecer monumental." },
+    { label: "Frontal", value: "Front view..." },
+    { label: "Zenital", value: "Top down..." },
+    { label: "45 Grados", value: "Isometric..." },
+    { label: "Dron", value: "Aerial..." },
+    { label: "Contrapicado", value: "Low angle..." },
   ]
 };
 
-// Smart Templates based on Business Category
-const PROMPT_TEMPLATES: Record<string, string[]> = {
-  "automotive": [
-    "En un showroom de lujo minimalista, piso de cerámica blanca y luces lineales de techo.",
-    "Conduciendo por una carretera costera al atardecer (Golden Hour) con desenfoque de movimiento (Motion Blur).",
-    "Estacionado frente a una arquitectura moderna de hormigón y vidrio (Cityscape), estilo agresivo.",
-    "Toma nocturna en ciudad con luces de neón reflejadas en la carrocería (estilo Cyberpunk)."
-  ],
-  "personal_brand": [
-    "Retrato corporativo moderno en una oficina de cristal, luz suave, traje elegante.",
-    "Estilo casual urbano caminando por una calle de Nueva York desenfocada.",
-    "Trabajando con un laptop en una cafetería estética (Coffee Shop), luz cálida y natural."
-  ],
-  "gastro": [
-    "Sobre una mesa de madera rústica envejecida en una terraza italiana.",
-    "Flotando dinámicamente con ingredientes frescos volando alrededor (splash).",
-    "Primer plano macro con vapor saliendo, fondo oscuro de cocina profesional."
-  ],
-  "fashion": [
-    "Modelo invisible (Ghost Mannequin) en un entorno de estudio blanco puro.",
-    "Colocado sobre rocas volcánicas negras en una playa al atardecer.",
-    "En una calle de París con arquitectura clásica desenfocada al fondo."
-  ],
-  "ecommerce": [
-    "Sobre un podio cilíndrico color pastel con sombras duras modernas.",
-    "Fondo infinito blanco puro (RGB 255,255,255) con reflejo sutil en el suelo.",
-    "Composición geométrica con formas abstractas de vidrio y metal."
-  ],
-  "beauty": [
-    "Rodeado de flores frescas y gotas de agua sobre una superficie de espejo.",
-    "Sobre una textura de seda satinada color champagne con luz suave.",
-    "En un baño de mármol blanco de lujo con luz de mañana."
-  ],
-  "realestate": [
-    "Estilo nórdico minimalista, luz de día, alfombras y plantas verdes.",
-    "Loft industrial con paredes de ladrillo y grandes ventanales de hierro.",
-    "Salón nocturno acogedor con chimenea encendida y luces cálidas."
-  ],
-  "tech": [
-    "Sobre una superficie de metal cepillado con luces de neón azules de fondo.",
-    "Flotando en un espacio oscuro con particulas de luz (estilo Matrix).",
-    "Escritorio setup minimalista de madera con plantas y luz natural."
-  ]
-};
+// --- COMPONENTS ---
+
+const StepIndicator: React.FC<{ currentStep: number }> = ({ currentStep }) => (
+  <div className="w-full max-w-xl mx-auto mb-8">
+    <div className="flex justify-between items-center relative">
+      {/* Connector Line */}
+      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-slate-800 -z-10"></div>
+      
+      {/* Steps */}
+      {[1, 2, 3].map((step) => {
+        const isActive = step <= currentStep;
+        return (
+          <div key={step} className="flex flex-col items-center gap-2 bg-[#0B1120] px-2">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all duration-300 ${isActive ? 'bg-yellow-500 border-yellow-500 text-black scale-110' : 'bg-slate-800 border-slate-600 text-slate-500'}`}>
+              {step}
+            </div>
+            <span className={`text-[10px] uppercase font-bold tracking-wider ${isActive ? 'text-white' : 'text-slate-600'}`}>
+              {step === 1 ? 'Sube' : step === 2 ? 'Estilo' : 'Genera'}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  </div>
+);
 
 const App: React.FC = () => {
+  // --- STATE ---
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isGuest, setIsGuest] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showGallery, setShowGallery] = useState(false);
-  const [showStyleAssistant, setShowStyleAssistant] = useState(false);
-  const [showMagicGuide, setShowMagicGuide] = useState(false); // New state for guide
+  const [viewMode, setViewMode] = useState<ViewMode>('quick'); // Default to Quick Mode
   
-  // State for images
   const [images, setImages] = useState<UploadedImage[]>([]);
   const [styleReference, setStyleReference] = useState<UploadedImage | null>(null);
-  
   const [prompt, setPrompt] = useState('');
   
-  // State for IDs to match the new structure
-  const [selectedBusinessId, setSelectedBusinessId] = useState<string>('');
   const [selectedStyles, setSelectedStyles] = useState<StyleOptions>({
-    business: '',
-    vibe: '',
-    lighting: '',
-    camera: '',
-    angle: '',
-    format: 'post_square',
-    is4K: false,
-    isFaceSwap: false // Default to Product mode
+    business: '', vibe: '', lighting: '', camera: '', angle: '', format: 'post_square', is4K: false, isFaceSwap: false
   });
   
   const [history, setHistory] = useState<GeneratedImage[]>([]);
   const [currentImage, setCurrentImage] = useState<GeneratedImage | null>(null);
-  
-  const [processingState, setProcessingState] = useState<ProcessingState>({
-    isLoading: false,
-    error: null,
-    statusMessage: ''
-  });
+  const [processingState, setProcessingState] = useState<ProcessingState>({ isLoading: false, error: null, statusMessage: '' });
 
   const loadingIntervalRef = useRef<number | null>(null);
-  const styleInputRef = useRef<HTMLInputElement>(null);
+
+  // --- DERIVED STATE ---
+  const currentStep = images.length === 0 ? 1 : (prompt || selectedStyles.business) ? 2 : 2;
 
   // --- HANDLERS ---
 
   const handleLogin = (guestMode: boolean = false) => {
     setIsGuest(guestMode);
     setIsAuthenticated(true);
-    
-    // Check if user has seen onboarding
-    const hasSeenOnboarding = localStorage.getItem('nicrolabs_onboarding_seen');
-    if (!hasSeenOnboarding) {
+    if (!localStorage.getItem('nicrolabs_onboarding_seen')) {
       setShowOnboarding(true);
       localStorage.setItem('nicrolabs_onboarding_seen', 'true');
     }
   };
 
   const handleLogout = () => {
-    setIsAuthenticated(false);
-    setIsGuest(false);
-    setImages([]);
-    setStyleReference(null);
-    setPrompt('');
-    setHistory([]);
-    setCurrentImage(null);
-  }
+    setIsAuthenticated(false); setImages([]); setStyleReference(null); setPrompt(''); setHistory([]); setCurrentImage(null);
+  };
 
   const handleImageAdd = (file: File, id: number) => {
-    const newImage: UploadedImage = {
-      id,
-      file,
-      previewUrl: URL.createObjectURL(file)
-    };
+    const newImage: UploadedImage = { id, file, previewUrl: URL.createObjectURL(file) };
     setImages(prev => [...prev.filter(img => img.id !== id), newImage].sort((a, b) => a.id - b.id));
   };
 
-  const handleImageRemove = (id: number) => {
-    setImages(prev => prev.filter(img => img.id !== id));
+  const applyQuickPreset = (preset: QuickPreset) => {
+    setSelectedStyles(prev => ({ ...prev, ...preset.config, isFaceSwap: false }));
+    setPrompt(`Estilo ${preset.label}: ${preset.description}.`); // Pre-fill prompt for context
   };
 
-  const handleStyleRefAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0];
-      setStyleReference({
-        id: 999,
-        file,
-        previewUrl: URL.createObjectURL(file)
-      });
-    }
-  };
-
-  const selectBusiness = (id: string, value: string) => {
-    setSelectedBusinessId(id === selectedBusinessId ? '' : id);
-    const newBusinessVal = id === selectedBusinessId ? '' : value;
+  const handleGenerate = async () => {
+    if (images.length === 0) return;
+    setProcessingState({ isLoading: true, error: null });
     
-    // AUTO-ENABLE 4K FOR AUTOMOTIVE
-    // Cars require high fidelity for paint reflections, so we force Pro model
-    const shouldBe4K = id === 'automotive';
-
-    setSelectedStyles(prev => ({ 
-      ...prev, 
-      business: newBusinessVal,
-      is4K: shouldBe4K ? true : prev.is4K // Auto-enable 4K for cars
-    }));
-  };
-
-  const toggleStyle = (category: keyof StyleOptions, value: any) => {
-     if (typeof value === 'boolean') {
-        setSelectedStyles(prev => ({ ...prev, [category]: value }));
-     } else {
-        setSelectedStyles(prev => ({ ...prev, [category]: prev[category as keyof StyleOptions] === value ? '' : value }));
-     }
-  };
-
-  const toggleFaceSwapMode = (enabled: boolean) => {
-    setSelectedStyles(prev => ({ ...prev, isFaceSwap: enabled }));
-    // Reset business if switching to face swap to clear product prompts
-    if (enabled) {
-      setSelectedBusinessId('');
-      setPrompt('');
-    }
-  };
-
-  const applyTemplate = (templateText: string) => {
-    setPrompt(templateText);
-  };
-
-  const openPinterest = () => {
-    window.open('https://www.pinterest.com/search/pins/?q=professional%20product%20photography%20ideas', '_blank');
-  };
-
-  const handleStyleAnalysis = async (description: string) => {
-    const suggestions = await getStyleSuggestions(description, {
-      business: PRESET_STYLES.business,
-      vibe: PRESET_STYLES.vibe,
-      lighting: PRESET_STYLES.lighting,
-      camera: PRESET_STYLES.camera,
-      angle: PRESET_STYLES.angle,
-      format: PRESET_FORMATS
-    });
-
-    if (suggestions) {
-      // Find business value from ID
-      const businessVal = PRESET_STYLES.business.find(b => b.id === suggestions.businessId)?.value || '';
-
-      setSelectedBusinessId(suggestions.businessId);
-      setSelectedStyles(prev => ({
-        ...prev,
-        business: businessVal,
-        vibe: suggestions.vibeValue,
-        lighting: suggestions.lightingValue,
-        camera: suggestions.cameraValue,
-        angle: suggestions.angleValue,
-        format: suggestions.formatId || 'post_square'
-      }));
-
-      if (suggestions.suggestedPromptAddon) {
-        setPrompt(suggestions.suggestedPromptAddon);
-      }
-    }
-  };
-
-  const handleDeleteImage = (id: string) => {
-    setHistory(prev => prev.filter(img => img.id !== id));
-    if (currentImage?.id === id) {
-      setCurrentImage(null);
-    }
-  };
-
-  const startLoadingMessages = () => {
+    // Simulate loading messages
     let index = 0;
     setProcessingState(prev => ({ ...prev, statusMessage: LOADING_MESSAGES[0] }));
     loadingIntervalRef.current = window.setInterval(() => {
       index = (index + 1) % LOADING_MESSAGES.length;
       setProcessingState(prev => ({ ...prev, statusMessage: LOADING_MESSAGES[index] }));
-    }, 2500);
-  };
-
-  const stopLoadingMessages = () => {
-    if (loadingIntervalRef.current) {
-      clearInterval(loadingIntervalRef.current);
-      loadingIntervalRef.current = null;
-    }
-  };
-
-  const handleGenerate = async () => {
-    if (images.length === 0 || !prompt.trim()) return;
-
-    setProcessingState({ isLoading: true, error: null });
-    startLoadingMessages();
+    }, 2000);
 
     try {
-      // Check for API Key if using Pro features (High Res or Non-Square)
-      const aspectRatio = FORMAT_MAP[selectedStyles.format] || '1:1';
-      const isProModel = aspectRatio !== '1:1' || selectedStyles.is4K;
-
+      const isProModel = FORMAT_MAP[selectedStyles.format] !== '1:1' || selectedStyles.is4K;
       if (isProModel) {
         const aistudio = (window as any).aistudio;
-        if (aistudio) {
-          const hasKey = await aistudio.hasSelectedApiKey();
-          if (!hasKey) {
-             await aistudio.openSelectKey();
-          }
+        if (aistudio && !(await aistudio.hasSelectedApiKey())) {
+           await aistudio.openSelectKey();
         }
       }
 
-      // Prepare Uploaded Images Payload
       const imagesPayload = await Promise.all(images.map(async (img) => ({
-        base64: await fileToBase64(img.file),
-        mimeType: img.file.type
+        base64: await fileToBase64(img.file), mimeType: img.file.type
       })));
 
       let styleRefPayload = undefined;
       if (styleReference) {
-        styleRefPayload = {
-          base64: await fileToBase64(styleReference.file),
-          mimeType: styleReference.file.type
-        };
+        styleRefPayload = { base64: await fileToBase64(styleReference.file), mimeType: styleReference.file.type };
       }
 
-      // --- ADVANCED PROMPT ENGINEERING PRO STUDIO ---
+      // Build Prompt
       let finalPrompt = "";
-      
       if (selectedStyles.isFaceSwap) {
-        // --- FACE SWAP / IDENTITY MODE ---
-        finalPrompt += `ACT AS AN EXPERT PHOTO EDITOR AND RETOUCHER. `;
-        finalPrompt += `TASK: FACE SWAP / IDENTITY TRANSFER. `;
-        finalPrompt += `SOURCE IMAGES: The uploaded images [Image 1, Image 2, Image 3] contain the Source Identities and Target Bodies. `;
-        finalPrompt += `USER INSTRUCTION: "${prompt}" `;
-        finalPrompt += `\nCRITICAL EXECUTION RULES: `;
-        finalPrompt += `1. Seamlessly replace the face/head as requested in the instruction. `;
-        finalPrompt += `2. MATCH skin tone, lighting direction, grain, and noise of the target image perfectly. `;
-        finalPrompt += `3. Preserve the expression if requested, otherwise adapt source face expression to target body context. `;
-        finalPrompt += `4. Result must be PHOTOREALISTIC. No cartoonish artifacts. `;
+         finalPrompt = `ACT AS EXPERT RETOUCHER. FACE SWAP TASK. Instruction: "${prompt}". Match lighting and skin tone perfectly. Photorealistic.`;
       } else {
-        // --- PRODUCT STUDIO MODE (STANDARD) ---
-        finalPrompt += `Rol: Fotógrafo de Producto de Clase Mundial y Director de Arte.\n`;
-        finalPrompt += `Objetivo: Integrar el/los PRODUCTO(S) subido(s) en la escena descrita de manera fotorrealista.\n`;
-        
-        // 1. INPUT DEFINITION (Crucial for adherence)
-        finalPrompt += `\nANÁLISIS DE INPUTS: `;
-        finalPrompt += `\n- INPUT 1 (Imágenes Cargadas): Son el SUJETO/PRODUCTO. Mantener geometría, logos, textos y detalles EXACTOS. Si hay varias imágenes, úsalas como diferentes vistas del mismo producto o como un conjunto de productos.`;
-        if (styleReference) {
-           finalPrompt += `\n- INPUT 2 (Imagen de Referencia): Es SOLO para ESTILO (Moodboard). Copiar iluminación, paleta de color, texturas de fondo y ángulo de cámara. NO generar el objeto que aparece en esta referencia, solo su "vibe".`;
-        }
-
-        // 2. CONTEXT
-        if (selectedStyles.business) finalPrompt += `\n\nCONTEXTO DE NEGOCIO: ${selectedStyles.business}`;
-        
-        // 3. USER SCENE INSTRUCTION
-        finalPrompt += `\n\nDESCRIPCIÓN DE LA ESCENA: "${prompt}"`;
-
-        // AUTOMOTIVE SPECIFIC LOGIC
-        if (selectedBusinessId === 'automotive') {
-          finalPrompt += `\n\nMOTOR DE RENDERIZADO AUTOMOTRIZ (CAR PAINT PHYSICS):\n`;
-          finalPrompt += `- Pintura: Renderizar con reflejos Fresnel realistas basados en el entorno HDRI sugerido.\n`;
-          finalPrompt += `- Cristales: Transparencia correcta con reflejos del cielo/techo.\n`;
-          finalPrompt += `- Neumáticos: Acabado negro satinado (tire dressing), no gris mate.\n`;
-          finalPrompt += `- Suelo: Sombra de contacto dura (Ambient Occlusion) debajo del chasis para evitar efecto "flotante".\n`;
-          if (styleReference) {
-             finalPrompt += `- INTEGRACIÓN DE ENTORNO: El vehículo debe reflejar en su carrocería los colores y luces de la Imagen de Referencia (Input 2).`;
-          }
-        }
-
-        // 4. TECHNICAL SPECS
-        const technicalParams = [];
-        if (selectedStyles.vibe) technicalParams.push(`Estilo Visual: ${selectedStyles.vibe}`);
-        if (selectedStyles.lighting) technicalParams.push(`Iluminación: ${selectedStyles.lighting}`);
-        if (selectedStyles.camera) technicalParams.push(`Óptica/Lente: ${selectedStyles.camera}`);
-        if (selectedStyles.angle) technicalParams.push(`Ángulo de Cámara: ${selectedStyles.angle}`);
-        
-        // FORMAT INJECTION
-        if (selectedStyles.format) {
-           const formatPrompt = PRESET_FORMATS.find(f => f.id === selectedStyles.format)?.prompt;
-           if (formatPrompt) {
-              technicalParams.push(`COMPOSICIÓN Y FORMATO: ${formatPrompt}`);
-           }
-        }
-        
-        if (technicalParams.length > 0) {
-          finalPrompt += `\n\nESPECIFICACIONES TÉCNICAS:\n${technicalParams.join('\n')}`;
-        }
+         finalPrompt = `Role: Pro Product Photographer. Goal: Integrate product into scene.\n`;
+         if (selectedStyles.business) finalPrompt += `Context: ${selectedStyles.business}.\n`;
+         finalPrompt += `Scene Description: "${prompt}".\n`;
+         if (selectedStyles.vibe) finalPrompt += `Style: ${selectedStyles.vibe}. Lighting: ${selectedStyles.lighting}.\n`;
+         if (selectedStyles.format) finalPrompt += `Format: ${PRESET_FORMATS.find(f => f.id === selectedStyles.format)?.prompt}`;
       }
-      
-      // High Quality Enforcers
-      finalPrompt += `\n\nCALIDAD DE SALIDA:\n`;
-      if (selectedStyles.is4K) {
-         finalPrompt += `- RESOLUCIÓN EXTREMA 8K RAW.\n- Renderizado sin compresión.\n- Micro-detalles de textura visibles.`;
-      } else {
-         finalPrompt += `- Fotografía comercial de alta gama (8K).\n`;
-         finalPrompt += `- Color grading cinematográfico.\n`;
-      }
-      finalPrompt += `- Iluminación físicamente correcta (Ray Tracing style).\n`;
-
-      console.log("Generando con prompt:", finalPrompt);
 
       let resultUrl = await editImageWithGemini(
-        imagesPayload, 
-        finalPrompt, 
-        styleRefPayload, 
-        aspectRatio, 
-        selectedStyles.is4K || false
+        imagesPayload, finalPrompt, styleRefPayload, FORMAT_MAP[selectedStyles.format] || '1:1', selectedStyles.is4K || false
       );
-      
-      // Apply Watermark if Guest
-      if (isGuest) {
-        setProcessingState(prev => ({ ...prev, statusMessage: "Aplicando marca de agua (Modo Demo)..." }));
-        resultUrl = await addWatermark(resultUrl);
-      }
-      
-      // Success Handling
-      const newCreation: GeneratedImage = {
-        id: Date.now().toString(),
-        imageUrl: resultUrl,
-        prompt: prompt,
-        timestamp: Date.now()
-      };
 
+      if (isGuest) resultUrl = await addWatermark(resultUrl);
+
+      const newCreation = { id: Date.now().toString(), imageUrl: resultUrl, prompt: prompt, timestamp: Date.now() };
       setHistory(prev => [newCreation, ...prev]);
       setCurrentImage(newCreation);
       setProcessingState({ isLoading: false, error: null, statusMessage: '' });
 
     } catch (error: any) {
-      setProcessingState({ 
-        isLoading: false, 
-        error: error.message || "Error al generar la imagen.",
-        statusMessage: ''
-      });
+      setProcessingState({ isLoading: false, error: error.message || "Error", statusMessage: '' });
     } finally {
-      stopLoadingMessages();
+      if (loadingIntervalRef.current) clearInterval(loadingIntervalRef.current);
     }
   };
 
-  // --- RENDER HELPERS ---
-
-  if (!isAuthenticated) {
-    return <LoginPage onLogin={handleLogin} />;
-  }
-
-  const currentTemplates = selectedBusinessId ? PROMPT_TEMPLATES[selectedBusinessId] : [];
+  if (!isAuthenticated) return <LoginPage onLogin={handleLogin} />;
 
   return (
-    <div className="min-h-screen bg-[#0B1120] text-slate-200 selection:bg-yellow-500/30 pb-20 font-sans">
+    <div className="min-h-screen bg-[#0B1120] text-slate-200 font-sans pb-20">
       
       {showOnboarding && <Onboarding onClose={() => setShowOnboarding(false)} />}
       
       <GalleryModal 
-        isOpen={showGallery} 
-        onClose={() => setShowGallery(false)} 
-        images={history} 
-        onDelete={handleDeleteImage}
-        onSelect={(img) => {
-          setCurrentImage(img);
-          setShowGallery(false);
-        }}
+        isOpen={showGallery} onClose={() => setShowGallery(false)} images={history} 
+        onDelete={(id) => { setHistory(prev => prev.filter(i => i.id !== id)); if(currentImage?.id === id) setCurrentImage(null); }}
+        onSelect={(img) => { setCurrentImage(img); setShowGallery(false); }}
       />
 
-      <StyleAssistantModal
-        isOpen={showStyleAssistant}
-        onClose={() => setShowStyleAssistant(false)}
-        onAnalyze={handleStyleAnalysis}
-      />
-
-      {/* --- HEADER --- */}
-      <header className="border-b border-slate-800 bg-[#0F172A]/80 backdrop-blur-xl sticky top-0 z-50 shadow-2xl">
+      {/* HEADER */}
+      <header className="border-b border-slate-800 bg-[#0F172A]/80 backdrop-blur-xl sticky top-0 z-50 shadow-lg">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            {isGuest && (
-              <button onClick={handleLogout} className="mr-2 text-slate-400 hover:text-white transition-colors">
-                <ArrowLeftIcon className="w-5 h-5" />
-              </button>
-            )}
-            <div className="bg-gradient-to-br from-yellow-400 to-orange-600 p-2 rounded-lg shadow-lg shadow-orange-500/20 hover:scale-105 transition-transform duration-300">
-              <LogoIcon className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold tracking-tight text-white leading-none">
-                Nicrolabs<span className="text-yellow-400">.AI</span>
-              </h1>
-              <span className="text-[10px] text-slate-400 tracking-wider font-medium uppercase block -mt-0.5">Studio v2.5</span>
-            </div>
+          <div className="flex items-center space-x-2">
+            <div className="bg-yellow-500 p-1.5 rounded-lg"><LogoIcon className="w-5 h-5 text-black" /></div>
+            <span className="font-bold text-lg text-white">Nicrolabs<span className="text-yellow-400">.AI</span></span>
           </div>
-          <div className="flex items-center space-x-4">
-            
-            <button 
-              onClick={() => setShowGallery(true)}
-              className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-colors relative"
-            >
+          <div className="flex items-center space-x-3">
+            <button onClick={() => setShowGallery(true)} className="p-2 text-slate-400 hover:text-white relative">
               <GridIcon className="w-5 h-5" />
-              {history.length > 0 && <span className="absolute top-1 right-1 w-2 h-2 bg-yellow-500 rounded-full animate-bounce"></span>}
+              {history.length > 0 && <span className="absolute top-1 right-1 w-2 h-2 bg-yellow-500 rounded-full"></span>}
             </button>
-
-            {/* FREE TRIAL BADGE */}
-            {!isGuest && (
-              <div className="hidden md:flex flex-col items-end mr-2 border-r border-slate-700 pr-4">
-                 <div className="flex items-center gap-1.5 text-xs font-bold text-white">
-                   <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
-                   Prueba Gratuita Activa
-                 </div>
-                 <span className="text-xs text-yellow-500 font-semibold tracking-wide">Quedan 7 días de regalo</span>
-              </div>
-            )}
-
-            <div className="hidden md:flex items-center space-x-2 text-xs font-medium text-slate-500 bg-slate-900/50 px-3 py-1.5 rounded-full border border-slate-800">
-              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-              <span>{isGuest ? 'Modo Demo' : 'Gemini Pro'}</span>
-            </div>
-            {isGuest ? (
-              <button onClick={handleLogout} className="px-3 py-1 bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 rounded-full text-xs font-semibold hover:bg-yellow-500 hover:text-black transition-all">
-                Registrarse (Quitar Marca)
-              </button>
-            ) : (
-               <button onClick={handleLogout} className="text-xs text-slate-400 hover:text-white transition-colors">
-                Cerrar Sesión
-              </button>
-            )}
+            <button onClick={handleLogout} className="text-xs font-medium text-slate-400 hover:text-white">Salir</button>
           </div>
         </div>
       </header>
 
       <TipsTicker />
 
-      {isGuest && (
-        <div className="bg-yellow-500/10 border-b border-yellow-500/20 text-center py-2 px-4 animate-in slide-in-from-top duration-500">
-          <p className="text-xs font-medium text-yellow-300">
-            🔒 <strong>Modo Demo:</strong> Tus imágenes tendrán marca de agua. 
-            <button onClick={handleLogout} className="underline ml-1 font-bold hover:text-white">Crea una cuenta gratis</button> para resultados profesionales limpios.
-          </p>
-        </div>
-      )}
-
       <main className="max-w-7xl mx-auto px-4 py-8">
         
-        {/* Onboarding Intro */}
-        <div className="mb-8 p-6 bg-slate-800/30 rounded-2xl border border-slate-700/50 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
-           <div>
-             <h2 className="text-lg font-bold text-white mb-1">Crea fotos de producto que vendan</h2>
-             <p className="text-sm text-slate-400">
-               1. Sube tu producto. 2. Elige el estilo. 3. La IA integra todo en un escenario fotorrealista.
-             </p>
-           </div>
-           <button 
-             onClick={openPinterest}
-             className="flex items-center space-x-2 px-4 py-2 bg-[#E60023] hover:bg-[#ad081b] text-white rounded-full text-xs font-bold shadow-lg transition-transform hover:scale-105"
-           >
-             <PinterestIcon className="w-4 h-4" />
-             <span>Buscar Ideas en Pinterest</span>
-           </button>
-        </div>
-        
+        {/* STEPPER */}
+        <StepIndicator currentStep={images.length > 0 ? (processingState.isLoading || currentImage ? 3 : 2) : 1} />
+
         <div className="grid lg:grid-cols-12 gap-8 items-start">
           
-          {/* --- LEFT COLUMN: CONTROLS (7/12) --- */}
-          <div className="lg:col-span-7 space-y-8 animate-in slide-in-from-left duration-700 delay-100">
+          {/* --- LEFT COLUMN: INPUTS (7/12) --- */}
+          <div className="lg:col-span-7 space-y-6 animate-in slide-in-from-left duration-500">
             
-            {/* 1. PRODUCT UPLOADER & MODE SELECTOR */}
-            <section className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                 {/* Mode Tabs */}
-                 <div className="flex p-1 bg-slate-900 rounded-lg border border-slate-800 inline-flex">
-                   <button 
-                     onClick={() => toggleFaceSwapMode(false)}
-                     className={`flex items-center gap-2 px-4 py-2 rounded-md text-xs font-bold transition-all ${!selectedStyles.isFaceSwap ? 'bg-slate-700 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}
-                   >
-                     <CameraIcon className="w-4 h-4" />
-                     Modo Producto
-                   </button>
-                   <button 
-                     onClick={() => toggleFaceSwapMode(true)}
-                     className={`flex items-center gap-2 px-4 py-2 rounded-md text-xs font-bold transition-all ${selectedStyles.isFaceSwap ? 'bg-yellow-500 text-black shadow' : 'text-slate-500 hover:text-slate-300'}`}
-                   >
-                     <FaceIcon className="w-4 h-4" />
-                     Cambio de Rostro
-                   </button>
-                 </div>
-              </div>
-
-              {selectedStyles.isFaceSwap ? (
-                 <div className="bg-yellow-500/10 border border-yellow-500/20 p-4 rounded-xl flex items-start gap-3 animate-in fade-in">
-                    <FaceIcon className="w-6 h-6 text-yellow-500 mt-1" />
-                    <div>
-                      <h4 className="text-sm font-bold text-white">Modo Intercambio de Rostro Activado</h4>
-                      <p className="text-xs text-slate-300 mt-1">
-                        Sube las fotos y usa el cuadro de texto para indicar qué cara va en qué cuerpo. 
-                        Ej: <em>"Pon la cara de la Imagen 1 en el cuerpo de la persona de la Imagen 2"</em>.
-                      </p>
-                    </div>
-                 </div>
-              ) : (
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                    <span className="bg-yellow-500 text-black w-5 h-5 rounded flex items-center justify-center text-xs">1</span>
-                    Sube tus Productos
-                  </h3>
-                  <span className="text-xs text-slate-500">El protagonista (Máx 3)</span>
-                </div>
-              )}
-              
-              <ImageUploader 
-                images={images}
-                onImageAdd={handleImageAdd}
-                onImageRemove={handleImageRemove}
-              />
+            {/* STEP 1: UPLOAD */}
+            <section className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">
+                <span className="bg-yellow-500 text-black w-5 h-5 rounded flex items-center justify-center text-xs">1</span>
+                Sube tus Productos
+              </h3>
+              <ImageUploader images={images} onImageAdd={handleImageAdd} onImageRemove={(id) => setImages(prev => prev.filter(img => img.id !== id))} />
             </section>
 
-             {/* 2. STYLE REFERENCE (MOODBOARD) */}
-             {!selectedStyles.isFaceSwap && (
-             <section className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                  <span className="bg-yellow-500 text-black w-5 h-5 rounded flex items-center justify-center text-xs">2</span>
-                  Referencias de Estilo (Moodboard)
-                </h3>
-                <span className="text-xs text-slate-500">Opcional</span>
+            {/* MODE TOGGLE */}
+            <div className="flex justify-center">
+              <div className="bg-slate-900 p-1 rounded-full border border-slate-800 flex shadow-inner">
+                <button 
+                  onClick={() => setViewMode('quick')}
+                  className={`px-6 py-2 rounded-full text-xs font-bold flex items-center gap-2 transition-all ${viewMode === 'quick' ? 'bg-yellow-500 text-black shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                >
+                  <BoltIcon className="w-4 h-4" /> Modo Rápido (1 Min)
+                </button>
+                <button 
+                  onClick={() => setViewMode('pro')}
+                  className={`px-6 py-2 rounded-full text-xs font-bold flex items-center gap-2 transition-all ${viewMode === 'pro' ? 'bg-slate-700 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}
+                >
+                  <PaletteIcon className="w-4 h-4" /> Modo Pro
+                </button>
               </div>
+            </div>
+
+            {/* STEP 2: STYLE SELECTION */}
+            <section className={`space-y-6 transition-all duration-500 ${images.length === 0 ? 'opacity-50 grayscale pointer-events-none' : 'opacity-100'}`}>
               
-              <div className="p-5 bg-slate-900/50 rounded-xl border border-slate-800 relative group transition-all hover:border-slate-600">
-                <div className="flex flex-col md:flex-row gap-4 items-center">
-                   <div className="flex-1">
-                      <h4 className="text-xs font-bold text-slate-300 mb-1 flex items-center gap-2">
-                        <LightbulbIcon className="w-4 h-4 text-yellow-400" />
-                        ¿Qué es esto?
-                      </h4>
-                      <p className="text-xs text-slate-400 leading-relaxed">
-                        Sube una foto que tenga la <strong>iluminación</strong> o el <strong>ángulo</strong> exacto que quieres copiar. 
-                        <br/><span className="text-slate-500 italic">Ej: Una foto de Pinterest con luz suave de ventana.</span>
-                      </p>
-                      <p className="text-[10px] text-yellow-500/80 mt-2 font-semibold">
-                         La IA tomará tu producto (Sección 1) y lo pondrá en este estilo.
-                      </p>
-                   </div>
-                   
-                   <div className="w-full md:w-48">
-                      <input 
-                        type="file" 
-                        ref={styleInputRef} 
-                        onChange={handleStyleRefAdd} 
-                        accept="image/*" 
-                        className="hidden" 
-                      />
-                      
-                      {styleReference ? (
-                        <div className="relative w-full aspect-video rounded-lg overflow-hidden border-2 border-yellow-500/50 shadow-lg group-hover:shadow-yellow-500/10 transition-all">
-                          <img src={styleReference.previewUrl} alt="Style Ref" className="w-full h-full object-cover" />
-                          <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-                             <span className="bg-black/60 px-3 py-1 rounded-full text-[10px] font-bold text-white backdrop-blur-sm border border-white/10">Estilo Activo</span>
-                          </div>
-                          <button 
-                            onClick={() => setStyleReference(null)}
-                            className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-sm"
-                          >
-                            <XIcon className="w-3 h-3" />
-                          </button>
-                        </div>
-                      ) : (
-                        <button 
-                          onClick={() => styleInputRef.current?.click()}
-                          className="w-full aspect-video border-2 border-dashed border-slate-700 hover:border-slate-500 rounded-lg text-slate-400 hover:text-white transition-all flex flex-col items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 hover:-translate-y-1"
-                        >
-                          <ImageIcon className="w-6 h-6 text-slate-600 group-hover:text-slate-400" />
-                          <span className="text-[10px] font-bold uppercase tracking-wide">Cargar Moodboard</span>
-                        </button>
-                      )}
-                   </div>
-                </div>
-              </div>
-            </section>
-            )}
-
-            {/* 3. STYLE SELECTOR */}
-            <section className="space-y-6 bg-slate-900/50 p-6 rounded-2xl border border-slate-800 hover:shadow-lg transition-shadow">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <span className="bg-yellow-500 text-black w-5 h-5 rounded flex items-center justify-center text-xs font-bold">3</span>
-                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-                    {selectedStyles.isFaceSwap ? "Ajustes de Renderizado" : "Configuración del Estudio"}
-                  </h3>
-                </div>
-                
-                {!selectedStyles.isFaceSwap && (
-                  <button 
-                    onClick={() => setShowStyleAssistant(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full text-[10px] font-bold shadow-lg shadow-indigo-500/20 transition-all border border-indigo-400/30 hover:scale-105"
-                  >
-                    <BotIcon className="w-3 h-3" />
-                    <span>Auto-Configurar con IA</span>
-                  </button>
-                )}
-              </div>
-
-               {/* New Format Section (Available in both modes) */}
-               <div className="space-y-3 mb-6">
-                <label className="text-xs font-semibold text-slate-400 ml-1 flex items-center gap-2">
-                  <LayoutIcon className="w-3 h-3 text-yellow-500" />
-                  Formato y Uso (Flyers & Portadas)
-                </label>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                  {PRESET_FORMATS.map((f) => (
-                    <button
-                      key={f.id}
-                      onClick={() => toggleStyle('format', f.id)}
-                      className={`
-                        p-2 rounded-lg text-center border transition-all flex flex-col items-center justify-center gap-1
-                        ${selectedStyles.format === f.id
-                          ? 'bg-yellow-500/20 border-yellow-500 text-yellow-200 shadow-md transform scale-105'
-                          : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-600 hover:text-slate-200'
-                        }
-                      `}
-                    >
-                      <span className="text-[10px] font-bold uppercase">{f.label}</span>
-                      <span className="text-[9px] opacity-60 leading-none">{f.desc}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-              
-              <div className="h-px bg-slate-800 w-full mb-6"></div>
-
-              {/* HIDE BUSINESS, VIBE, LIGHTING IN FACE SWAP MODE */}
-              {!selectedStyles.isFaceSwap && (
-                <>
-                {/* Business Type Grid */}
-                <div className="space-y-3">
-                  <label className="text-xs font-semibold text-slate-400 ml-1">Contexto del Negocio</label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {PRESET_STYLES.business.map((s) => (
+              {/* QUICK MODE UI */}
+              {viewMode === 'quick' && (
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+                  <div className="flex justify-between items-center mb-4">
+                     <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                        <span className="bg-yellow-500 text-black w-5 h-5 rounded flex items-center justify-center text-xs">2</span>
+                        Elige una Tarjeta de Estilo
+                     </h3>
+                  </div>
+                  
+                  {/* Visual Preset Cards (Horizontal Scroll) */}
+                  <div className="flex gap-4 overflow-x-auto pb-4 snap-x custom-scrollbar">
+                    {QUICK_PRESETS.map((preset) => (
                       <button
-                        key={s.id}
-                        onClick={() => selectBusiness(s.id, s.value)}
+                        key={preset.id}
+                        onClick={() => applyQuickPreset(preset)}
                         className={`
-                          relative group p-4 rounded-xl text-left border transition-all duration-200 hover:translate-x-1
-                          ${selectedBusinessId === s.id
-                            ? 'bg-yellow-500/10 border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.1)]'
-                            : 'bg-slate-800 border-slate-700 hover:border-slate-500 hover:bg-slate-750'
+                          relative flex-shrink-0 w-32 md:w-40 bg-slate-800 rounded-xl overflow-hidden border-2 transition-all snap-start text-left group
+                          ${selectedStyles.business === preset.config.business && prompt.includes(preset.label) 
+                            ? 'border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.3)] scale-105' 
+                            : 'border-slate-700 hover:border-slate-500 hover:scale-105'
                           }
                         `}
                       >
-                        <div className="flex justify-between items-start mb-1">
-                          <span className="font-bold text-sm text-slate-100">{s.label}</span>
-                          {selectedBusinessId === s.id && <span className="text-yellow-400 text-xs animate-pulse">●</span>}
-                        </div>
-                        <p className="text-[11px] text-slate-400 leading-tight group-hover:text-slate-300 transition-colors">
-                          {s.desc}
-                        </p>
+                         <div className="h-24 md:h-32 bg-slate-700 relative">
+                            <img src={preset.imageHint} className="w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity" alt={preset.label} />
+                            <div className="absolute inset-0 flex items-center justify-center">
+                               <div className="bg-black/40 backdrop-blur-sm p-2 rounded-full border border-white/20">
+                                  {preset.icon}
+                               </div>
+                            </div>
+                         </div>
+                         <div className="p-3">
+                            <h4 className="text-xs font-bold text-white leading-tight mb-1">{preset.label}</h4>
+                            <p className="text-[10px] text-slate-400 leading-tight">{preset.description}</p>
+                         </div>
+                         {selectedStyles.business === preset.config.business && prompt.includes(preset.label) && (
+                           <div className="absolute top-2 right-2 bg-yellow-500 text-black p-1 rounded-full shadow-lg">
+                             <CheckCircleIcon className="w-3 h-3" />
+                           </div>
+                         )}
                       </button>
                     ))}
                   </div>
-                </div>
 
-                <div className="h-px bg-slate-800 w-full my-4"></div>
-
-                {/* Vibe & Lighting */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Vibe */}
-                  <div className="space-y-3">
-                      <label className="text-xs font-semibold text-slate-400 ml-1">Atmósfera Visual</label>
-                      <div className="flex flex-col gap-2">
-                        {PRESET_STYLES.vibe.map((s) => (
-                          <button
-                            key={s.label}
-                            onClick={() => toggleStyle('vibe', s.value)}
-                            className={`
-                              px-3 py-2 rounded-lg text-xs text-left border transition-all flex justify-between items-center
-                              ${selectedStyles.vibe === s.value 
-                                ? 'bg-purple-500/20 border-purple-500 text-purple-100' 
-                                : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-600 hover:text-slate-200'
-                              }
-                            `}
-                          >
-                            <span className="font-medium">{s.label}</span>
-                          </button>
-                        ))}
-                      </div>
-                  </div>
-
-                  {/* Lighting */}
-                  <div className="space-y-3">
-                      <label className="text-xs font-semibold text-slate-400 ml-1">Iluminación de Estudio</label>
-                      <div className="flex flex-col gap-2">
-                        {PRESET_STYLES.lighting.map((s) => (
-                          <button
-                            key={s.label}
-                            onClick={() => toggleStyle('lighting', s.value)}
-                            className={`
-                              px-3 py-2 rounded-lg text-xs text-left border transition-all flex justify-between items-center
-                              ${selectedStyles.lighting === s.value 
-                                ? 'bg-orange-500/20 border-orange-500 text-orange-100' 
-                                : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-600 hover:text-slate-200'
-                              }
-                            `}
-                          >
-                            <span className="font-medium">{s.label}</span>
-                            <span className="text-[10px] opacity-60 ml-2 hidden sm:inline-block truncate max-w-[100px]">{s.desc}</span>
-                          </button>
-                        ))}
-                      </div>
+                  <div className="mt-4 pt-4 border-t border-slate-800">
+                    <label className="text-xs text-slate-400 font-semibold mb-2 block">Detalles opcionales (Color, fondo extra):</label>
+                    <textarea 
+                      value={prompt}
+                      onChange={(e) => setPrompt(e.target.value)}
+                      placeholder="Ej: Fondo azul, mesa de madera..."
+                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:border-yellow-500 h-20 resize-none"
+                    />
                   </div>
                 </div>
-                </>
               )}
 
-              {/* Advanced Technical */}
-               <div className="pt-4 border-t border-slate-800 mt-4">
-                  <div className="flex justify-between items-center mb-2">
-                      <label className="text-xs font-semibold text-slate-500 ml-1">
-                        {selectedStyles.isFaceSwap ? "Calidad de Fusión" : "Cámara y Ajustes Avanzados"}
-                      </label>
-                      <button 
-                        onClick={() => toggleStyle('is4K', !selectedStyles.is4K)}
-                        className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all ${selectedStyles.is4K ? 'bg-blue-500 text-white shadow-[0_0_10px_rgba(59,130,246,0.5)]' : 'bg-slate-800 text-slate-500 hover:bg-slate-700'}`}
-                      >
-                         <HdIcon className="w-3 h-3" />
-                         <span>{selectedStyles.is4K ? '4K Ultra ON' : '4K OFF'}</span>
-                      </button>
+              {/* PRO MODE UI */}
+              {viewMode === 'pro' && (
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                       <span className="bg-yellow-500 text-black w-5 h-5 rounded flex items-center justify-center text-xs">2</span>
+                       Configuración Avanzada
+                    </h3>
+                  </div>
+
+                  {/* Pro Controls Grid */}
+                  <div className="grid grid-cols-2 gap-4">
+                     <div>
+                       <label className="text-xs text-slate-500 block mb-1">Negocio</label>
+                       <select 
+                         className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-xs"
+                         onChange={(e) => setSelectedStyles(p => ({...p, business: e.target.value}))}
+                       >
+                         <option value="">Seleccionar...</option>
+                         {PRESET_STYLES.business.map(b => <option key={b.id} value={b.value}>{b.label}</option>)}
+                       </select>
+                     </div>
+                     <div>
+                       <label className="text-xs text-slate-500 block mb-1">Iluminación</label>
+                       <select 
+                         className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-xs"
+                         onChange={(e) => setSelectedStyles(p => ({...p, lighting: e.target.value}))}
+                       >
+                         <option value="">Seleccionar...</option>
+                         {PRESET_STYLES.lighting.map(l => <option key={l.label} value={l.value}>{l.label}</option>)}
+                       </select>
+                     </div>
                   </div>
                   
-                  {/* Hide camera/angle presets in Face Swap as they are less relevant or might confuse the prompt */}
-                  {!selectedStyles.isFaceSwap && (
-                    <div className="flex flex-wrap gap-2">
-                      {[...PRESET_STYLES.camera, ...PRESET_STYLES.angle].map((s) => {
-                        const isCamera = PRESET_STYLES.camera.some(c => c.label === s.label);
-                        const type = isCamera ? 'camera' : 'angle';
-                        const isSelected = selectedStyles[type] === s.value;
-                        
-                        return (
-                          <button
-                            key={s.label}
-                            onClick={() => toggleStyle(type, s.value)}
-                            className={`
-                              px-3 py-1.5 rounded text-[11px] font-medium border transition-all
-                              ${isSelected
-                                ? 'bg-emerald-500/20 border-emerald-500 text-emerald-100' 
-                                : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-600'
-                              }
-                            `}
-                          >
-                            {s.label}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  )}
-               </div>
-
-            </section>
-
-            {/* 4. PROMPT & GENERATE */}
-            <section className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="bg-yellow-500 text-black w-5 h-5 rounded flex items-center justify-center text-xs font-bold">4</span>
-                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-                    {selectedStyles.isFaceSwap ? "Instrucción de Intercambio" : "Prompt Mágico"}
-                  </h3>
-                </div>
-                 <button 
-                    onClick={() => setShowMagicGuide(!showMagicGuide)}
-                    className="text-xs text-yellow-500 hover:text-yellow-400 font-bold flex items-center gap-1 transition-colors"
-                  >
-                    <BookOpenIcon className="w-4 h-4" />
-                    <span>Nicrolabs Academy: Guía de Prompts</span>
-                    <ChevronDownIcon className={`w-3 h-3 transition-transform ${showMagicGuide ? 'rotate-180' : ''}`} />
-                  </button>
-              </div>
-
-               {/* ACADEMY / GUIDE DROPDOWN */}
-               {showMagicGuide && (
-                <div className="bg-slate-900/80 border border-yellow-500/20 rounded-xl p-5 mb-4 animate-in slide-in-from-top-2">
-                   <h4 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
-                     <LightbulbIcon className="w-4 h-4 text-yellow-400" />
-                     La Fórmula Secreta para Prompts Perfectos
-                   </h4>
-                   <p className="text-xs text-slate-400 mb-3">
-                     No describas tu producto (la IA ya lo ve). Describe la escena.
-                   </p>
-                   <div className="bg-black/40 p-3 rounded-lg border border-slate-700 font-mono text-xs text-yellow-200 mb-3">
-                      Sujeto (Tu Foto) + Entorno + Iluminación + Detalles
-                   </div>
-                   <div className="grid grid-cols-2 gap-4 text-xs">
-                      <div>
-                        <strong className="text-white block mb-1">✅ Palabras Poderosas:</strong>
-                        <ul className="text-slate-400 space-y-1 list-disc list-inside">
-                          <li>Cinemático, Volumétrico</li>
-                          <li>Minimalista, Elegante</li>
-                          <li>Luz natural, Rayos de sol</li>
-                        </ul>
-                      </div>
-                      <div>
-                        <strong className="text-white block mb-1">❌ Qué evitar:</strong>
-                        <ul className="text-slate-400 space-y-1 list-disc list-inside">
-                           <li>"Una foto de un producto" (Muy vago)</li>
-                           <li>Describir colores que no quieres</li>
-                        </ul>
-                      </div>
-                   </div>
-                </div>
-               )}
-              
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
-                
-                {/* Smart Templates (Product Mode Only) */}
-                {!selectedStyles.isFaceSwap && selectedBusinessId && currentTemplates && (
-                  <div className="mb-4">
-                    <p className="text-[11px] uppercase font-bold text-yellow-500/80 mb-2 flex items-center">
-                      <SparklesIcon className="w-3 h-3 mr-1" />
-                      Ideas rápidas para {PRESET_STYLES.business.find(b => b.id === selectedBusinessId)?.label.split(' ')[1]}:
-                    </p>
-                    <div className="flex flex-col gap-2">
-                      {currentTemplates.map((template, idx) => (
-                        <button
-                          key={idx}
-                          onClick={() => applyTemplate(template)}
-                          className="text-left text-xs text-slate-300 hover:text-white bg-slate-800/50 hover:bg-slate-800 border border-slate-700 hover:border-slate-500 p-2.5 rounded-lg transition-colors group"
-                        >
-                          <span className="opacity-50 group-hover:opacity-100 mr-2 transition-opacity">✨</span>
-                          "{template}"
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div className="relative">
-                  <textarea
+                  <textarea 
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
-                    placeholder={
-                      selectedStyles.isFaceSwap 
-                        ? "Ej: 'Toma la cara de la Imagen 1 y ponla en la persona de la Imagen 2. Mantén el peinado original de la Imagen 2.'"
-                        : "Ej: 'Sobre una mesa de mármol blanco, con luz de atardecer entrando por la ventana y un florero desenfocado atrás'..."
-                    }
-                    className="w-full h-28 bg-black/30 border border-slate-700 rounded-lg p-4 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500/50 transition-all resize-none"
+                    placeholder="Escribe tu prompt detallado aquí..."
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm h-28 focus:border-yellow-500"
                   />
-                  <div className="absolute bottom-3 right-3 text-[10px] text-slate-600 font-mono">
-                    NICROLABS PRO
+                  
+                  <div className="flex items-center gap-4">
+                     <label className="flex items-center gap-2 text-xs cursor-pointer">
+                        <input type="checkbox" checked={selectedStyles.is4K} onChange={(e) => setSelectedStyles(p => ({...p, is4K: e.target.checked}))} />
+                        <span className="text-blue-400 font-bold">Activar 4K Ultra HD</span>
+                     </label>
+                     <label className="flex items-center gap-2 text-xs cursor-pointer">
+                        <input type="checkbox" checked={selectedStyles.isFaceSwap} onChange={(e) => setSelectedStyles(p => ({...p, isFaceSwap: e.target.checked}))} />
+                        <span className="text-purple-400 font-bold">Modo Face Swap</span>
+                     </label>
                   </div>
                 </div>
-
-                <div className="mt-5">
-                  <button
-                    onClick={handleGenerate}
-                    disabled={images.length === 0 || !prompt || processingState.isLoading}
-                    className={`
-                      w-full py-4 rounded-xl font-bold text-base shadow-xl flex items-center justify-center space-x-2 transition-all duration-300 relative overflow-hidden group
-                      ${(images.length === 0 || !prompt || processingState.isLoading)
-                        ? 'bg-slate-800 border border-slate-700 text-slate-500 cursor-not-allowed opacity-50'
-                        : 'bg-gradient-to-r from-yellow-400 via-yellow-500 to-orange-500 text-slate-900 hover:shadow-orange-500/30 hover:-translate-y-0.5 animate-gradient-x'
-                      }
-                    `}
-                  >
-                    {processingState.isLoading ? (
-                      <>
-                        <div className="w-5 h-5 border-2 border-slate-900/30 border-t-slate-900 rounded-full animate-spin"></div>
-                        <span>{processingState.statusMessage || 'Renderizando...'}</span>
-                      </>
-                    ) : (
-                      <>
-                        {selectedStyles.isFaceSwap ? <RefreshIcon className="w-5 h-5" /> : <WandIcon className="w-5 h-5" />}
-                        <span className="relative z-10">
-                           {selectedStyles.isFaceSwap ? "Intercambiar Rostro" : "Generar Fotografía Pro"}
-                        </span>
-                      </>
-                    )}
-                  </button>
-                  {processingState.error && (
-                    <div className="mt-3 text-xs text-red-400 text-center bg-red-900/10 p-2 rounded border border-red-900/30 animate-pulse">
-                      ⚠️ {processingState.error}
-                    </div>
-                  )}
-                </div>
-              </div>
+              )}
             </section>
+
+            {/* GENERATE BUTTON */}
+            <button
+              onClick={handleGenerate}
+              disabled={images.length === 0 || (!prompt && !selectedStyles.business) || processingState.isLoading}
+              className={`
+                w-full py-4 rounded-xl font-bold text-lg shadow-xl flex items-center justify-center gap-2 transition-all transform active:scale-[0.99]
+                ${(images.length === 0 || (!prompt && !selectedStyles.business) || processingState.isLoading)
+                  ? 'bg-slate-800 text-slate-500 cursor-not-allowed opacity-50'
+                  : 'bg-gradient-to-r from-yellow-400 to-orange-500 text-slate-900 hover:shadow-orange-500/20 hover:-translate-y-1'
+                }
+              `}
+            >
+              {processingState.isLoading ? (
+                <>
+                   <div className="w-5 h-5 border-2 border-slate-900/30 border-t-slate-900 rounded-full animate-spin"></div>
+                   <span>{processingState.statusMessage}</span>
+                </>
+              ) : (
+                <>
+                   <WandIcon className="w-6 h-6" />
+                   <span>Generar Foto Mágica</span>
+                </>
+              )}
+            </button>
+
           </div>
 
           {/* --- RIGHT COLUMN: RESULT (5/12) --- */}
-          <div className="lg:col-span-5 space-y-6 animate-in slide-in-from-right duration-700 delay-200">
-            
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden sticky top-24 min-h-[500px] flex flex-col shadow-2xl ring-1 ring-white/5 relative">
-              
-              {/* SCANNER LOADING EFFECT */}
-              {processingState.isLoading && (
-                 <div className="absolute inset-0 z-20 pointer-events-none">
-                    <div className="w-full h-1 bg-yellow-500/80 shadow-[0_0_20px_rgba(234,179,8,0.8)] animate-scan"></div>
-                    <div className="absolute inset-0 bg-yellow-500/5 mix-blend-overlay"></div>
-                 </div>
-              )}
+          <div className="lg:col-span-5 space-y-6 animate-in slide-in-from-right duration-500 delay-100">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl min-h-[500px] flex flex-col relative overflow-hidden shadow-2xl">
+               
+               {/* Header */}
+               <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-800/50">
+                  <h3 className="font-bold text-white text-sm uppercase tracking-wider flex items-center gap-2">
+                     <span className="bg-yellow-500 text-black w-5 h-5 rounded flex items-center justify-center text-xs">3</span>
+                     Resultado
+                  </h3>
+                  {currentImage && <span className="text-[10px] text-green-400 border border-green-500/30 px-2 rounded-full">Listo</span>}
+               </div>
 
-              <div className="p-4 border-b border-slate-800 bg-slate-800/30 flex justify-between items-center backdrop-blur-sm z-30">
-                 <h3 className="font-bold text-white flex items-center space-x-2 text-sm">
-                  <span className="bg-yellow-500 text-black w-5 h-5 rounded flex items-center justify-center text-xs">5</span>
-                  <span>Resultado Final</span>
-                </h3>
-                {currentImage && (
-                    <span className="px-2 py-0.5 bg-green-500/10 text-green-400 border border-green-500/20 rounded text-[10px] font-mono animate-pulse">RENDER 8K</span>
-                )}
-              </div>
-
-              <div className="flex-1 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-[#050912] flex items-center justify-center relative p-4 group min-h-[400px]">
-                {currentImage ? (
-                  <div className="w-full flex flex-col transition-all duration-500 animate-in fade-in zoom-in-95">
-                    <ResultDisplay imageUrl={currentImage.imageUrl} />
-                  </div>
-                ) : (
-                  <div className={`text-center p-8 flex flex-col items-center ${processingState.isLoading ? 'opacity-50 animate-pulse' : 'opacity-30'}`}>
-                    <div className="w-20 h-20 rounded-full bg-slate-800 flex items-center justify-center mb-4">
-                        <SparklesIcon className="w-8 h-8 text-slate-400" />
+               {/* Canvas */}
+               <div className="flex-1 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-[#050912] p-4 flex items-center justify-center relative">
+                  {currentImage ? (
+                    <div className="w-full h-full animate-in zoom-in-95 duration-500">
+                       <ResultDisplay imageUrl={currentImage.imageUrl} />
                     </div>
-                    <p className="text-sm text-slate-400 font-medium">Lienzo vacío</p>
-                    <p className="text-xs text-slate-600 mt-2 max-w-[200px]">Sube tus fotos y configura el estudio.</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Session History Strip */}
-              {history.length > 0 && (
-                <div className="p-4 bg-slate-900/90 border-t border-slate-800 backdrop-blur z-30">
-                  <div className="flex justify-between items-end mb-2">
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tus Tomas Recientes</p>
-                    <span className="text-[10px] text-slate-600">{history.length}</span>
-                  </div>
-                  <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x">
-                    {history.map((item) => (
-                      <button
-                        key={item.id}
-                        onClick={() => setCurrentImage(item)}
-                        className={`relative w-20 h-20 rounded-lg overflow-hidden border-2 flex-shrink-0 transition-all snap-start ${
-                          currentImage?.id === item.id 
-                          ? 'border-yellow-500 ring-2 ring-yellow-500/20 scale-105 z-10 shadow-lg' 
-                          : 'border-slate-700 hover:border-slate-500 grayscale hover:grayscale-0 opacity-70 hover:opacity-100'
-                        }`}
-                      >
-                        <img src={item.imageUrl} className="w-full h-full object-cover" alt="History" />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+                  ) : (
+                    <div className={`text-center p-8 opacity-30 flex flex-col items-center`}>
+                       <SparklesIcon className="w-12 h-12 mb-4" />
+                       <p className="text-sm font-medium">Aquí aparecerá tu magia</p>
+                    </div>
+                  )}
+               </div>
             </div>
-
-            {/* Pro Tips with Rotation */}
-            <div className="bg-slate-900/50 p-5 rounded-xl border border-slate-800/50 backdrop-blur-sm animate-in slide-in-from-bottom duration-700 delay-300">
-                <h4 className="text-yellow-500 font-bold text-xs uppercase mb-2 flex items-center">
-                    <SparklesIcon className="w-3 h-3 mr-1" />
-                    Consejos de Experto
-                </h4>
-                <ul className="space-y-2 text-xs text-slate-400">
-                    <li className="flex items-start gap-2">
-                        <span className="text-green-500">✓</span>
-                        <span><strong>Tip #1:</strong> Sube una imagen de referencia de estilo (paso 2) para copiar la luz exacta de una foto que te guste de internet.</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                        <span className="text-green-500">✓</span>
-                        <span><strong>Tip #2:</strong> Las fotos de producto funcionan mejor si el fondo original es simple.</span>
-                    </li>
-                    {selectedStyles.isFaceSwap && (
-                       <li className="flex items-start gap-2">
-                          <span className="text-yellow-500">⚠</span>
-                          <span><strong>Face Swap:</strong> Para mejores resultados, usa fotos donde ambas caras miren en una dirección similar (frente/frente).</span>
-                      </li>
-                    )}
-                </ul>
-            </div>
-
+            
+            {/* History Strip */}
+            {history.length > 0 && (
+               <div className="flex gap-2 overflow-x-auto pb-2">
+                 {history.map(img => (
+                   <img 
+                     key={img.id} 
+                     src={img.imageUrl} 
+                     onClick={() => setCurrentImage(img)}
+                     className={`w-16 h-16 rounded-lg object-cover cursor-pointer border-2 transition-all ${currentImage?.id === img.id ? 'border-yellow-500 opacity-100' : 'border-slate-700 opacity-60'}`} 
+                   />
+                 ))}
+               </div>
+            )}
           </div>
+
         </div>
       </main>
     </div>

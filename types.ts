@@ -1,3 +1,4 @@
+import React from 'react';
 
 export interface GeneratedImage {
   id: string;
@@ -13,6 +14,17 @@ export interface ProcessingState {
 }
 
 export type AspectRatio = "1:1" | "3:4" | "4:3" | "16:9" | "9:16";
+
+export type ViewMode = 'quick' | 'pro';
+
+export interface QuickPreset {
+  id: string;
+  label: string;
+  description: string;
+  icon: React.ReactNode;
+  config: Partial<StyleOptions>;
+  imageHint: string;
+}
 
 export interface UploadedImage {
   id: number;

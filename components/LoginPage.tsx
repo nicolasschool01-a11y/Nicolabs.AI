@@ -33,7 +33,7 @@ const FAQS = [
 const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isRegistering, setIsRegistering] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(true); // Default to Registering for Free Trial push
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
   
   // Policies Modal State
@@ -65,10 +65,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
       <div className="flex-grow">
       {/* --- MAIN HERO SECTION --- */}
-      <div className="flex flex-col lg:flex-row min-h-screen">
+      <div className="flex flex-col lg:flex-row min-h-[90vh]">
         
         {/* --- MOBILE HERO (Visible only on Mobile) --- */}
-        <div className="lg:hidden relative h-[55vh] w-full overflow-hidden">
+        <div className="lg:hidden relative h-[50vh] w-full overflow-hidden">
           <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 gap-0.5 opacity-90">
               <img src="https://images.unsplash.com/photo-1581235720704-06d3acfcb36f?auto=format&fit=crop&w=400&q=80" className="w-full h-full object-cover" alt="Ferretería/Herramientas" />
               <img src="https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&w=400&q=80" className="w-full h-full object-cover" alt="Farmacia/Cosmética" />
@@ -86,11 +86,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             <h1 className="text-3xl font-extrabold text-white leading-tight mb-2">
               Fotografía profesional <br/>al alcance de todos.
             </h1>
-            <p className="text-sm text-slate-300 leading-relaxed mb-1">
-              <strong>Farmacias, Ferreterías, E-commerce y Marcas Personales.</strong>
-            </p>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Transformamos tus productos cotidianos en imágenes de catálogo premium en segundos. Vende más con mejor imagen.
+            <p className="text-xs text-slate-300 leading-relaxed mb-1">
+              Ideal para <strong>comercios, emprendedores, creadores de contenido y personas</strong> que quieren mejorar sus fotos en redes.
             </p>
           </div>
         </div>
@@ -109,29 +106,14 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             </div>
             
             <h2 className="text-2xl lg:text-3xl font-bold text-white mb-2 text-center lg:text-left">
-              {isRegistering ? "Empieza tu Prueba Gratis" : "Bienvenido de nuevo"}
+              {isRegistering ? "Crea tu estudio gratis por 7 días" : "Bienvenido de nuevo"}
             </h2>
             <p className="text-slate-400 text-sm text-center lg:text-left leading-relaxed">
               {isRegistering 
-                ? "Calidad de estudio profesional para tu negocio. 7 días gratis." 
+                ? "Calidad de estudio profesional para tu negocio." 
                 : "Tu estudio virtual está listo. Continúa creando."}
             </p>
           </div>
-
-          {/* TRIAL BANNER */}
-          {isRegistering && (
-            <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/30 rounded-xl p-4 mb-6 flex items-start gap-3 animate-in fade-in slide-in-from-top-4">
-               <div className="bg-yellow-500/20 p-2 rounded-full">
-                  <SparklesIcon className="w-5 h-5 text-yellow-400" />
-               </div>
-               <div>
-                 <h4 className="text-yellow-400 text-sm font-bold mb-1">Oferta Especial Activada</h4>
-                 <p className="text-slate-300 text-xs leading-snug">
-                   Obtén <strong className="text-white">7 Días de Acceso Premium</strong> totalmente gratis. Cancela cuando quieras.
-                 </p>
-               </div>
-            </div>
-          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -162,27 +144,18 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
               type="submit"
               className="w-full bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-3.5 rounded-xl transition-all shadow-lg hover:shadow-yellow-500/20 active:scale-[0.99] mt-2 text-sm uppercase tracking-wide flex items-center justify-center gap-2"
             >
-              {isRegistering ? "Comenzar mis 7 Días Gratis" : "Acceder al Estudio"}
+              {isRegistering ? "Comenzar prueba gratis" : "Iniciar Sesión"}
             </button>
           </form>
 
-          {isRegistering && (
-             <div className="mt-4 flex items-center justify-center space-x-4 text-[10px] text-slate-500">
-               <span className="flex items-center gap-1"><CheckCircleIcon className="w-3 h-3 text-green-500" /> Sin tarjeta requerida</span>
-               <span className="flex items-center gap-1"><CheckCircleIcon className="w-3 h-3 text-green-500" /> Cancela cuando quieras</span>
-             </div>
-          )}
-
-          <div className="mt-6">
+          {/* Simple Link Switcher */}
+          <div className="mt-6 text-center">
             <button 
-              type="button" 
-              onClick={() => onLogin(true)} 
-              className="w-full bg-slate-800/30 hover:bg-slate-800 text-slate-300 font-medium py-3 rounded-xl border border-dashed border-slate-600 hover:border-yellow-500/50 transition-all flex items-center justify-center gap-2 group text-sm"
+              onClick={() => setIsRegistering(!isRegistering)}
+              className="text-slate-400 text-sm font-medium hover:text-white transition-colors underline decoration-slate-600 underline-offset-4 hover:decoration-white"
             >
-              <span className="text-yellow-500 group-hover:scale-110 transition-transform">⚡</span>
-              <span className="group-hover:text-white transition-colors">Prueba Rápida (Invitado)</span>
+              {isRegistering ? "Ya tengo cuenta → Iniciar sesión" : "¿No tienes cuenta? → Crea tu estudio gratis"}
             </button>
-            <p className="text-center text-[10px] text-slate-600 mt-2">Acceso limitado con marca de agua.</p>
           </div>
 
           <div className="relative my-6 lg:my-8">
@@ -204,18 +177,17 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
               <span className="font-medium text-xs lg:text-sm">Apple</span>
             </button>
           </div>
-
-          <div className="mt-6 lg:mt-8 text-center">
-            <p className="text-slate-400 text-sm">
-              {isRegistering ? "¿Ya tienes cuenta?" : "¿Nuevo en Nicrolabs?"}
-              <button 
-                onClick={() => setIsRegistering(!isRegistering)}
-                className="text-yellow-400 font-semibold ml-2 hover:underline"
-              >
-                {isRegistering ? "Inicia Sesión" : "Obtén 7 días Gratis"}
-              </button>
-            </p>
+          
+           <div className="mt-8">
+            <button 
+              type="button" 
+              onClick={() => onLogin(true)} 
+              className="w-full text-xs text-slate-500 hover:text-white transition-colors flex items-center justify-center gap-1 group"
+            >
+              <span className="group-hover:translate-x-1 transition-transform">Probar como Invitado (Con Marca de Agua) →</span>
+            </button>
           </div>
+
         </div>
 
         {/* --- RIGHT COLUMN: VALUE PROP (Desktop Only) --- */}
@@ -236,7 +208,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             </div>
           </div>
 
-          {/* Gradients - Adjusted for visibility + readability */}
+          {/* Gradients */}
           <div className="absolute inset-0 bg-gradient-to-t from-[#0B1120] via-[#0B1120]/40 to-transparent"></div>
           <div className="absolute inset-0 bg-gradient-to-r from-[#0B1120] via-[#0B1120]/60 to-transparent"></div>
 
@@ -254,11 +226,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             
             <div className="space-y-4 mb-8">
               <p className="text-xl text-slate-100 font-normal leading-relaxed drop-shadow-md">
-                Unificamos la calidad visual para todos: <strong className="text-white border-b-2 border-yellow-500/50">Farmacias, Ferreterías, E-commerce</strong> y Marcas Personales.
-              </p>
-              <p className="text-lg text-slate-200 font-light leading-relaxed drop-shadow-md">
-                No importa si vendes un cosmético, un martillo o ropa. Nicrolabs eleva cualquier producto cotidiano a un objeto de deseo premium.
-                <br/><span className="text-yellow-400 font-medium">Resultados increíbles. Fácil y rápido.</span>
+                Unificamos la calidad visual para todos: Ideal para <strong className="text-white border-b-2 border-yellow-500/50">comercios, emprendedores, creadores de contenido</strong> y personas que quieren mejorar sus fotos en redes.
               </p>
             </div>
             
@@ -280,6 +248,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* --- NEW STRIP: 3 STEPS --- */}
+      <div className="w-full bg-yellow-500 text-slate-950 font-bold text-center py-4 px-4 text-sm md:text-base border-y border-yellow-600 shadow-[0_0_20px_rgba(234,179,8,0.2)] relative z-20">
+         3 pasos: 1) Sube tu producto · 2) Elige un estilo · 3) Descarga tu foto lista para vender.
       </div>
 
       {/* --- HOW IT WORKS & POSSIBILITIES --- */}
