@@ -1,14 +1,12 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import ImageUploader from './components/ImageUploader';
 import ResultDisplay from './components/ResultDisplay';
 import LoginPage from './components/LoginPage';
 import Onboarding from './components/Onboarding';
 import GalleryModal from './components/GalleryModal';
-import StyleAssistantModal from './components/StyleAssistantModal';
 import TipsTicker from './components/TipsTicker';
-import { WandIcon, SparklesIcon, LogoIcon, ArrowLeftIcon, PinterestIcon, UploadIcon, XIcon, CheckCircleIcon, LayoutIcon, HdIcon, LightbulbIcon, BookOpenIcon, ChevronDownIcon, FaceIcon, RefreshIcon, CameraIcon, GridIcon, TrashIcon, BotIcon, ImageIcon, BoltIcon, PaletteIcon } from './components/Icons';
-import { editImageWithGemini, fileToBase64, addWatermark, getStyleSuggestions } from './services/geminiService';
+import { WandIcon, SparklesIcon, LogoIcon, GridIcon, BoltIcon, PaletteIcon, CheckCircleIcon } from './components/Icons';
+import { editImageWithGemini, fileToBase64, addWatermark } from './services/geminiService';
 import { ProcessingState, UploadedImage, StyleOptions, GeneratedImage, ViewMode, QuickPreset } from './types';
 
 // --- CONSTANTS & CONFIG ---
@@ -83,7 +81,6 @@ const FORMAT_MAP: Record<string, string> = {
   'post_square': '1:1', 'story': '9:16', 'flyer': '3:4', 'cover': '16:9', 'thumbnail': '16:9'
 };
 
-// ... (Keep existing PRESET_STYLES content from previous file, omitted here for brevity but assumed present in final output)
 const PRESET_STYLES = {
   business: [
     { id: "automotive", label: "🚗 Automotriz", desc: "Autos y Motos", value: "Fotografía automotriz profesional..." },
@@ -95,55 +92,30 @@ const PRESET_STYLES = {
     { id: "realestate", label: "🏠 Deco", desc: "Muebles", value: "Interior design..." },
     { id: "tech", label: "📱 Tech", desc: "Gadgets", value: "Tech futuristic..." },
   ],
-  vibe: [
-    { label: "💎 Lujo", desc: "Minimalista", value: "Lujo minimalista..." },
-    { label: "🌿 Natural", desc: "Orgánico", value: "Orgánico natural..." },
-    { label: "🌆 Urbano", desc: "Calle", value: "Urbano street..." },
-    { label: "🎨 Pop", desc: "Color", value: "Pop art..." },
-    { label: "🌑 Dark", desc: "Elegante", value: "Dark moody..." },
-    { label: "🕰️ Retro", desc: "Vintage", value: "Retro vintage..." },
-  ],
   lighting: [
     { label: "☀️ Golden Hour", desc: "", value: "Golden hour..." },
     { label: "💡 Estudio", desc: "", value: "Studio lighting..." },
     { label: "🌓 Dramático", desc: "", value: "Dramatic contrast..." },
-    { label: "☁️ Ventana", desc: "", value: "Natural window..." },
-    { label: "🟣 Neón", desc: "", value: "Neon lights..." },
-  ],
-  camera: [
-    { label: "Macro", value: "Macro lens..." },
-    { label: "Retrato", value: "50mm prime..." },
-    { label: "Gran Angular", value: "Wide angle..." },
-    { label: "Acción", value: "Action camera..." },
-    { label: "Cine", value: "Anamorphic..." },
-  ],
-  angle: [
-    { label: "Frontal", value: "Front view..." },
-    { label: "Zenital", value: "Top down..." },
-    { label: "45 Grados", value: "Isometric..." },
-    { label: "Dron", value: "Aerial..." },
-    { label: "Contrapicado", value: "Low angle..." },
   ]
 };
 
 // --- COMPONENTS ---
 
 const StepIndicator: React.FC<{ currentStep: number }> = ({ currentStep }) => (
-  <div className="w-full max-w-xl mx-auto mb-8">
+  <div className="w-full max-w-xl mx-auto mb-10">
     <div className="flex justify-between items-center relative">
-      {/* Connector Line */}
-      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-slate-800 -z-10"></div>
+      <div className="absolute left-0 top-4 w-full h-1 bg-slate-800 -z-10"></div>
       
-      {/* Steps */}
       {[1, 2, 3].map((step) => {
         const isActive = step <= currentStep;
+        const isCompleted = step < currentStep;
         return (
-          <div key={step} className="flex flex-col items-center gap-2 bg-[#0B1120] px-2">
+          <div key={step} className="flex flex-col items-center gap-2 bg-[#0B1120] px-4">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all duration-300 ${isActive ? 'bg-yellow-500 border-yellow-500 text-black scale-110' : 'bg-slate-800 border-slate-600 text-slate-500'}`}>
-              {step}
+              {isCompleted ? <CheckCircleIcon className="w-5 h-5" /> : step}
             </div>
             <span className={`text-[10px] uppercase font-bold tracking-wider ${isActive ? 'text-white' : 'text-slate-600'}`}>
-              {step === 1 ? 'Sube' : step === 2 ? 'Estilo' : 'Genera'}
+              {step === 1 ? '1. Sube tu producto' : step === 2 ? '2. Elige el estilo' : '3. Genera la foto'}
             </span>
           </div>
         );
@@ -199,14 +171,13 @@ const App: React.FC = () => {
 
   const applyQuickPreset = (preset: QuickPreset) => {
     setSelectedStyles(prev => ({ ...prev, ...preset.config, isFaceSwap: false }));
-    setPrompt(`Estilo ${preset.label}: ${preset.description}.`); // Pre-fill prompt for context
+    setPrompt(`Estilo ${preset.label}: ${preset.description}.`);
   };
 
   const handleGenerate = async () => {
     if (images.length === 0) return;
     setProcessingState({ isLoading: true, error: null });
     
-    // Simulate loading messages
     let index = 0;
     setProcessingState(prev => ({ ...prev, statusMessage: LOADING_MESSAGES[0] }));
     loadingIntervalRef.current = window.setInterval(() => {
@@ -232,7 +203,6 @@ const App: React.FC = () => {
         styleRefPayload = { base64: await fileToBase64(styleReference.file), mimeType: styleReference.file.type };
       }
 
-      // Build Prompt
       let finalPrompt = "";
       if (selectedStyles.isFaceSwap) {
          finalPrompt = `ACT AS EXPERT RETOUCHER. FACE SWAP TASK. Instruction: "${prompt}". Match lighting and skin tone perfectly. Photorealistic.`;
@@ -283,6 +253,9 @@ const App: React.FC = () => {
             <span className="font-bold text-lg text-white">Nicrolabs<span className="text-yellow-400">.AI</span></span>
           </div>
           <div className="flex items-center space-x-3">
+            <div className="hidden md:flex items-center space-x-1 bg-yellow-500/10 px-3 py-1 rounded-full border border-yellow-500/20">
+              <span className="text-xs font-bold text-yellow-400">🎁 Prueba gratis: 7 días restantes</span>
+            </div>
             <button onClick={() => setShowGallery(true)} className="p-2 text-slate-400 hover:text-white relative">
               <GridIcon className="w-5 h-5" />
               {history.length > 0 && <span className="absolute top-1 right-1 w-2 h-2 bg-yellow-500 rounded-full"></span>}
@@ -306,27 +279,29 @@ const App: React.FC = () => {
             
             {/* STEP 1: UPLOAD */}
             <section className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">
-                <span className="bg-yellow-500 text-black w-5 h-5 rounded flex items-center justify-center text-xs">1</span>
-                Sube tus Productos
-              </h3>
+              <div className="flex justify-between items-center mb-4">
+                 <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                   Paso 1: Sube tus Fotos
+                 </h3>
+                 <span className="text-xs text-slate-500">Máx 3 imágenes</span>
+              </div>
               <ImageUploader images={images} onImageAdd={handleImageAdd} onImageRemove={(id) => setImages(prev => prev.filter(img => img.id !== id))} />
             </section>
 
-            {/* MODE TOGGLE */}
+            {/* MODE TOGGLE - HIDDEN BY DEFAULT TO SIMPLIFY, SHOWN AS A TAB */}
             <div className="flex justify-center">
               <div className="bg-slate-900 p-1 rounded-full border border-slate-800 flex shadow-inner">
                 <button 
                   onClick={() => setViewMode('quick')}
                   className={`px-6 py-2 rounded-full text-xs font-bold flex items-center gap-2 transition-all ${viewMode === 'quick' ? 'bg-yellow-500 text-black shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
                 >
-                  <BoltIcon className="w-4 h-4" /> Modo Rápido (1 Min)
+                  <BoltIcon className="w-4 h-4" /> Modo Rápido
                 </button>
                 <button 
                   onClick={() => setViewMode('pro')}
                   className={`px-6 py-2 rounded-full text-xs font-bold flex items-center gap-2 transition-all ${viewMode === 'pro' ? 'bg-slate-700 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}
                 >
-                  <PaletteIcon className="w-4 h-4" /> Modo Pro
+                  <PaletteIcon className="w-4 h-4" /> Opciones Avanzadas
                 </button>
               </div>
             </div>
@@ -338,13 +313,12 @@ const App: React.FC = () => {
               {viewMode === 'quick' && (
                 <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
                   <div className="flex justify-between items-center mb-4">
-                     <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                        <span className="bg-yellow-500 text-black w-5 h-5 rounded flex items-center justify-center text-xs">2</span>
-                        Elige una Tarjeta de Estilo
+                     <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                        Paso 2: Elige el Estilo
                      </h3>
                   </div>
                   
-                  {/* Visual Preset Cards (Horizontal Scroll) */}
+                  {/* Visual Preset Cards */}
                   <div className="flex gap-4 overflow-x-auto pb-4 snap-x custom-scrollbar">
                     {QUICK_PRESETS.map((preset) => (
                       <button
@@ -378,30 +352,16 @@ const App: React.FC = () => {
                       </button>
                     ))}
                   </div>
-
-                  <div className="mt-4 pt-4 border-t border-slate-800">
-                    <label className="text-xs text-slate-400 font-semibold mb-2 block">Detalles opcionales (Color, fondo extra):</label>
-                    <textarea 
-                      value={prompt}
-                      onChange={(e) => setPrompt(e.target.value)}
-                      placeholder="Ej: Fondo azul, mesa de madera..."
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:border-yellow-500 h-20 resize-none"
-                    />
-                  </div>
                 </div>
               )}
 
               {/* PRO MODE UI */}
               {viewMode === 'pro' && (
                 <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                       <span className="bg-yellow-500 text-black w-5 h-5 rounded flex items-center justify-center text-xs">2</span>
-                       Configuración Avanzada
-                    </h3>
-                  </div>
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                     Configuración Manual
+                  </h3>
 
-                  {/* Pro Controls Grid */}
                   <div className="grid grid-cols-2 gap-4">
                      <div>
                        <label className="text-xs text-slate-500 block mb-1">Negocio</label>
@@ -479,8 +439,7 @@ const App: React.FC = () => {
                
                {/* Header */}
                <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-800/50">
-                  <h3 className="font-bold text-white text-sm uppercase tracking-wider flex items-center gap-2">
-                     <span className="bg-yellow-500 text-black w-5 h-5 rounded flex items-center justify-center text-xs">3</span>
+                  <h3 className="font-bold text-white text-sm uppercase tracking-wider">
                      Resultado
                   </h3>
                   {currentImage && <span className="text-[10px] text-green-400 border border-green-500/30 px-2 rounded-full">Listo</span>}

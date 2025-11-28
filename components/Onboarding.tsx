@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ChevronRightIcon, UploadIcon, WandIcon, ImageIcon, CheckCircleIcon } from './Icons';
 
@@ -9,20 +8,20 @@ interface OnboardingProps {
 const STEPS = [
   {
     id: 1,
-    title: "1. Sube tu Producto",
-    desc: "Saca una foto con tu celular. Ya sea una herramienta, una crema o un repuesto. No importa si el fondo es feo, la IA lo arregla.",
+    title: "1. Sube tu Foto",
+    desc: "Toma una foto con tu celular. Ya sea una herramienta de ferretería, un producto de farmacia o una selfie. No importa el fondo.",
     icon: <UploadIcon className="w-8 h-8 text-yellow-400" />
   },
   {
     id: 2,
     title: "2. Elige el Estilo",
-    desc: "Selecciona una tarjeta visual: 'Ferretería', 'Farmacia', 'Instagram Viral'. Sin configuraciones complicadas.",
+    desc: "Usa el Modo Rápido. Toca una tarjeta: 'Ferretería', 'Farmacia', 'Instagram'. La IA configura la luz y el estudio por ti.",
     icon: <ImageIcon className="w-8 h-8 text-yellow-400" />
   },
   {
     id: 3,
-    title: "3. Listo en Segundos",
-    desc: "Nicrolabs genera una imagen de catálogo profesional. Descárgala y úsala en tus redes o tienda online.",
+    title: "3. Listo para Vender",
+    desc: "En segundos obtienes una foto de estudio profesional. Descárgala y úsala en tu catálogo, web o redes sociales.",
     icon: <WandIcon className="w-8 h-8 text-yellow-400" />
   }
 ];
@@ -70,7 +69,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onClose }) => {
             >
               {currentStep === STEPS.length - 1 ? (
                 <>
-                  <span>¡Empezar Ahora!</span>
+                  <span>¡Empezar a Crear!</span>
                   <CheckCircleIcon className="w-5 h-5" />
                 </>
               ) : (

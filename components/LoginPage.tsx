@@ -1,6 +1,5 @@
-
 import React, { useState } from 'react';
-import { LogoIcon, GoogleIcon, AppleIcon, SparklesIcon, CameraIcon, ChevronRightIcon, ChevronDownIcon, UploadIcon, WandIcon, ImageIcon, CheckCircleIcon } from './Icons';
+import { LogoIcon, GoogleIcon, AppleIcon, SparklesIcon, CameraIcon, ChevronRightIcon, ChevronDownIcon, UploadIcon, ImageIcon, WandIcon } from './Icons';
 import PoliciesModal from './PoliciesModal';
 
 interface LoginPageProps {
@@ -33,7 +32,7 @@ const FAQS = [
 const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isRegistering, setIsRegistering] = useState(true); // Default to Registering for Free Trial push
+  const [isRegistering, setIsRegistering] = useState(true);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
   
   // Policies Modal State

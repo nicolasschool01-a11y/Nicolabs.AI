@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { DownloadIcon, SparklesIcon } from './Icons';
 
@@ -17,12 +16,12 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ imageUrl }) => {
   };
 
   return (
-    <div className="relative w-full h-full flex items-center justify-center bg-black/20 rounded-xl overflow-hidden group">
+    <div className="relative w-full h-full flex items-center justify-center bg-black/20 rounded-xl overflow-hidden group min-h-[400px]">
       {/* Dynamic Image Container - Ensures image is fully visible without strict aspect ratio forcing */}
       <img
         src={imageUrl}
         alt="Generada"
-        className="max-w-full max-h-[70vh] w-auto h-auto object-contain shadow-2xl rounded-lg"
+        className="max-w-full max-h-[85vh] w-auto h-auto object-contain shadow-2xl rounded-lg"
       />
       
       {/* Overlay Actions - Bottom Right */}

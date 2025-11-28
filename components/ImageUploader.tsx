@@ -1,4 +1,3 @@
-
 import React, { useRef } from 'react';
 import { UploadIcon, XIcon } from './Icons';
 import { UploadedImage } from '../types';
@@ -71,9 +70,17 @@ const ImageSlot: React.FC<{
           <span className="text-xs font-bold text-slate-300 group-hover:text-white transition-colors uppercase tracking-wide">
             Subir Foto {id}
           </span>
-          <p className="text-[10px] text-slate-500 mt-1 max-w-[120px] leading-tight">
-            {id === 1 ? "Tu foto principal (Buena luz)" : "Ángulo o detalle extra"}
-          </p>
+          <div className="text-[10px] text-slate-500 mt-2 max-w-[140px] leading-tight border-t border-slate-700 pt-1 space-y-0.5">
+             {id === 1 ? (
+               <>
+                 <p>✨ Buena luz natural</p>
+                 <p>🎯 Producto enfocado</p>
+                 <p>📦 Objeto completo</p>
+               </>
+             ) : (
+               <p>📸 Detalle o ángulo extra</p>
+             )}
+          </div>
         </div>
       )}
     </div>
